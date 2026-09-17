@@ -62,12 +62,15 @@ public final class NexoraScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
-        renderBackground(context, mouseX, mouseY, deltaTicks);
+        // Do not call Screen#renderBackground here. In 1.21.11 that can invoke
+        // the screen blur pass a second time when Fabric/vanilla already applied it,
+        // which throws "Can only blur once per frame".
+        context.fill(0, 0, width, height, 0x66000000);
 
         int panelW = Math.min(560, width - 40);
-        int panelH = 285;
+        int panelH = Math.min(285, height - 20);
         int panelX = (width - panelW) / 2;
-        int panelY = 35;
+        int panelY = Math.max(10, (height - panelH) / 2);
 
         context.fill(panelX, panelY, panelX + panelW, panelY + panelH, PANEL);
         context.fill(panelX, panelY, panelX + 130, panelY + panelH, PANEL_2);
