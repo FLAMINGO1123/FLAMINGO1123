@@ -34,6 +34,9 @@ public final class CommandManager {
             case "gui" -> client.setScreen(new NexoraScreen(nexora));
             case "toggle" -> toggle(client, args);
             case "flyspeed" -> flySpeed(client, args);
+            case "speed" -> speed(client, args);
+            case "blockesp" -> blockEsp(client, args);
+            case "esprange" -> espRange(client, args);
             case "relog" -> relog(client, args);
             case "waypoint", "wp" -> waypoint(client, args);
             case "modules" -> modules(client);
@@ -43,10 +46,12 @@ public final class CommandManager {
     }
 
     private void help(MinecraftClient client) {
-        chat(client, "§d§lNexora §7commands");
+        chat(client, "§d§lNexora V2 §7commands");
         chat(client, "§f.help §8| §f.gui §8| §f.modules");
-        chat(client, "§f.toggle <module> §8| §f.flyspeed <0.05-1.0>");
-        chat(client, "§f.relog [seconds] §8| §f.wp add <name> §8| §f.wp list §8| §f.wp remove <name>");
+        chat(client, "§f.toggle <module> §8| §f.flyspeed <0.05-1.0> §8| §f.speed <1-3>");
+        chat(client, "§f.blockesp add/remove/list/defaults/clear <block_id>");
+        chat(client, "§f.esprange <8-48> §8| §f.relog [seconds]");
+        chat(client, "§f.wp add <name> §8| §f.wp list §8| §f.wp remove <name>");
     }
 
     private void modules(MinecraftClient client) {
@@ -78,11 +83,78 @@ public final class CommandManager {
         }
         try {
             float value = Float.parseFloat(args[1]);
-            value = Math.max(0.05f, Math.min(1.0f, value));
             nexora.setFlySpeed(value);
-            chat(client, "§7Fly speed set to §d" + String.format(Locale.ROOT, "%.2f", value));
+            chat(client, "§7Fly speed: §d" + String.format(Locale.ROOT, "%.2f", nexora.flySpeed()));
         } catch (NumberFormatException e) {
             chat(client, "§cUsage: .flyspeed <0.05-1.0>");
+        }
+    }
+
+    private void speed(MinecraftClient client, String[] args) {
+        if (args.length < 2) {
+            chat(client, "§7Speed multiplier: §d" + String.format(Locale.ROOT, "%.2f", nexora.speedMultiplier()));
+            return;
+        }
+        try {
+            nexora.setSpeedMultiplier(Float.parseFloat(args[1]));
+            chat(client, "§7Speed multiplier: §d" + String.format(Locale.ROOT, "%.2f", nexora.speedMultiplier()));
+        } catch (NumberFormatException e) {
+            chat(client, "§cUsage: .speed <1.0-3.0>");
+        }
+    }
+
+    private void blockEsp(MinecraftClient client, String[] args) {
+        if (args.length < 2) {
+            chat(client, "§cUsage: .blockesp add/remove/list/defaults/clear <block_id>");
+            return;
+        }
+
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "list" -> {
+                if (nexora.blockEsp().trackedBlocks().isEmpty()) {
+                    chat(client, "§7Block ESP list is empty.");
+                    return;
+                }
+                chat(client, "§dTracked blocks:");
+                for (String id : nexora.blockEsp().trackedBlocks()) chat(client, "§7• §f" + id);
+            }
+            case "defaults" -> {
+                nexora.blockEsp().resetDefaults();
+                chat(client, "§aRestored Block ESP defaults.");
+            }
+            case "clear" -> {
+                nexora.blockEsp().clear();
+                chat(client, "§aCleared Block ESP list.");
+            }
+            case "add" -> {
+                if (args.length < 3) {
+                    chat(client, "§cUsage: .blockesp add <minecraft:block>");
+                    return;
+                }
+                if (nexora.blockEsp().add(args[2])) chat(client, "§aAdded §f" + args[2]);
+                else chat(client, "§eAlready tracked or invalid id.");
+            }
+            case "remove" -> {
+                if (args.length < 3) {
+                    chat(client, "§cUsage: .blockesp remove <minecraft:block>");
+                    return;
+                }
+                chat(client, nexora.blockEsp().remove(args[2]) ? "§aRemoved §f" + args[2] : "§eNot in tracked list.");
+            }
+            default -> chat(client, "§cUsage: .blockesp add/remove/list/defaults/clear <block_id>");
+        }
+    }
+
+    private void espRange(MinecraftClient client, String[] args) {
+        if (args.length < 2) {
+            chat(client, "§7Block ESP range: §d" + nexora.blockEsp().scanRange());
+            return;
+        }
+        try {
+            nexora.blockEsp().setScanRange(Integer.parseInt(args[1]));
+            chat(client, "§7Block ESP range: §d" + nexora.blockEsp().scanRange());
+        } catch (NumberFormatException e) {
+            chat(client, "§cUsage: .esprange <8-48>");
         }
     }
 
