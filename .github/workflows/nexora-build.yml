@@ -6,6 +6,11 @@ on:
     paths:
       - 'nexora-client/**'
       - '.github/workflows/nexora-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'nexora-client/**'
+      - '.github/workflows/nexora-build.yml'
   workflow_dispatch:
 
 jobs:
