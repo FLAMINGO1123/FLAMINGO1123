@@ -1,11 +1,6 @@
 name: Build Nexora Client
 
 on:
-  push:
-    branches: [ nexora-client-build ]
-    paths:
-      - 'nexora-client/**'
-      - '.github/workflows/nexora-build.yml'
   pull_request:
     branches: [ main ]
     paths:
