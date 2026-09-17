@@ -122,7 +122,7 @@ public final class NexoraClient implements ClientModInitializer {
     }
 
     private void handleSpeed(MinecraftClient client) {
-        if (!modules.enabled("Speed") || client.player.isFallFlying() || client.player.isClimbing()) return;
+        if (!modules.enabled("Speed") || client.player.isClimbing()) return;
 
         double forward = 0.0;
         double strafe = 0.0;
