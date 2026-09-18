@@ -36,7 +36,7 @@ public final class CommandManager {
             case "flyspeed" -> flySpeed(client, args);
             case "speed" -> speed(client, args);
             case "blockesp" -> blockEsp(client, args);
-            case "esprange" -> espRange(client, args);
+            case "esprange" -> espRange(client, args);\n            case "blockrange" -> blockRange(client, args);
             case "relog" -> relog(client, args);
             case "waypoint", "wp" -> waypoint(client, args);
             case "modules" -> modules(client);
@@ -46,11 +46,11 @@ public final class CommandManager {
     }
 
     private void help(MinecraftClient client) {
-        chat(client, "§d§lNexora V2 §7commands");
+        chat(client, "§d§lNexora V3 §7commands");
         chat(client, "§f.help §8| §f.gui §8| §f.modules");
         chat(client, "§f.toggle <module> §8| §f.flyspeed <0.05-1.0> §8| §f.speed <1-3>");
         chat(client, "§f.blockesp add/remove/list/defaults/clear <block_id>");
-        chat(client, "§f.esprange <8-48> §8| §f.relog [seconds]");
+        chat(client, "§f.esprange <32-256> §8| §f.blockrange <8-64> §8| §f.relog [seconds]");
         chat(client, "§f.wp add <name> §8| §f.wp list §8| §f.wp remove <name>");
     }
 
@@ -147,6 +147,19 @@ public final class CommandManager {
 
     private void espRange(MinecraftClient client, String[] args) {
         if (args.length < 2) {
+            chat(client, "§7Entity ESP range: §d" + nexora.espRange());
+            return;
+        }
+        try {
+            nexora.setEspRange(Integer.parseInt(args[1]));
+            chat(client, "§7Entity ESP range: §d" + nexora.espRange());
+        } catch (NumberFormatException e) {
+            chat(client, "§cUsage: .esprange <32-256>");
+        }
+    }
+
+    private void blockRange(MinecraftClient client, String[] args) {
+        if (args.length < 2) {
             chat(client, "§7Block ESP range: §d" + nexora.blockEsp().scanRange());
             return;
         }
@@ -154,7 +167,7 @@ public final class CommandManager {
             nexora.blockEsp().setScanRange(Integer.parseInt(args[1]));
             chat(client, "§7Block ESP range: §d" + nexora.blockEsp().scanRange());
         } catch (NumberFormatException e) {
-            chat(client, "§cUsage: .esprange <8-48>");
+            chat(client, "§cUsage: .blockrange <8-64>");
         }
     }
 
