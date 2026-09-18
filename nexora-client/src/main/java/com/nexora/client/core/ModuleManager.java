@@ -25,7 +25,7 @@ public final class ModuleManager {
         add(new Module("BaseFinder", "DonutSMP", "Scores loaded storage clusters as possible bases.", false));
         add(new Module("StorageESP", "DonutSMP", "Finds loaded chests, barrels, hoppers and shulkers.", false));
         add(new Module("BlockESP", "DonutSMP", "Tracks your chosen blocks in loaded client chunks.", false));
-        add(new Module("Waypoints", "DonutSMP", "Shows saved waypoint markers and distances.", false));
+        add(new Module("Waypoints", "World", "Shows saved waypoint markers and distances.", false));
 
         add(new Module("HUD", "Misc", "Compact Nexora HUD, radar and active modules.", true));
     }
