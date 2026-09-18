@@ -177,7 +177,7 @@ public final class WorldEspRenderer {
 
         matrices.push();
         matrices.translate(x - camera.x, y - camera.y, z - camera.z);
-        matrices.multiply(client.getEntityRenderDispatcher().getRotation());
+        matrices.multiply(client.gameRenderer.getCamera().getRotation());
         matrices.scale(0.025f, -0.025f, 0.025f);
 
         float textX = -client.textRenderer.getWidth(label) / 2.0f;
