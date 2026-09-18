@@ -7,7 +7,7 @@ import com.nexora.client.feature.BaseFinder;
 import com.nexora.client.feature.BlockEspManager;
 import com.nexora.client.feature.RelogManager;
 import com.nexora.client.feature.WaypointManager;
-import com.nexora.client.gui.NexoraScreen;
+import com.nexora.client.gui.NexoraScreen;\nimport com.nexora.client.render.WorldEspRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -36,7 +36,7 @@ public final class NexoraClient implements ClientModInitializer {
     private final WaypointManager waypoints = new WaypointManager();
     private final BaseFinder baseFinder = new BaseFinder();
     private final BlockEspManager blockEsp = new BlockEspManager();
-    private final RelogManager relog = new RelogManager();
+    private final RelogManager relog = new RelogManager();\n    private final WorldEspRenderer worldEspRenderer = new WorldEspRenderer(this);
 
     private CommandManager commands;
     private KeyBinding openGui;
@@ -65,7 +65,7 @@ public final class NexoraClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(this::tick);
         ClientSendMessageEvents.ALLOW_CHAT.register(message -> !commands.handle(message));
-        HudRenderCallback.EVENT.register((context, tickCounter) -> renderHud(context));
+        HudRenderCallback.EVENT.register((context, tickCounter) -> renderHud(context));\n        worldEspRenderer.register();
     }
 
     private void tick(MinecraftClient client) {
