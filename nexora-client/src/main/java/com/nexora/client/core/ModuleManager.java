@@ -10,20 +10,24 @@ public final class ModuleManager {
     private final Map<String, Module> modules = new LinkedHashMap<>();
 
     public ModuleManager() {
-        add(new Module("CrystalESP", "Combat", "Highlights nearby end crystals.", false));
+        add(new Module("CrystalESP", "Combat", "Glowing crystal ESP visible through walls.", false));
 
-        add(new Module("Fly", "Movement", "Client flight with adjustable speed.", false));
+        add(new Module("Fly", "Movement", "Client flight with adjustable fly speed.", false));
         add(new Module("Sprint", "Movement", "Automatically sprints while moving forward.", false));
-        add(new Module("AutoWalk", "Movement", "Keeps the forward key held for you.", false));
-        add(new Module("Speed", "Movement", "Client movement speed boost.", false));
+        add(new Module("AutoWalk", "Movement", "Keeps forward movement held for you.", false));
+        add(new Module("Speed", "Movement", "Adjustable client movement speed.", false));
 
-        add(new Module("ESP", "Render", "Player/mob ESP. Right-click for block ESP settings.", false));
-        add(new Module("BlockESP", "Render", "Scans loaded nearby blocks for your tracked block list.", false));
-        add(new Module("StorageESP", "Render", "Finds loaded chests, barrels, hoppers and shulkers.", false));
-        add(new Module("Fullbright", "Render", "Forces maximum vanilla gamma while enabled.", false));
-        add(new Module("HUD", "Render", "Nexora HUD, radar and active module list.", true));
+        add(new Module("ESP", "Render", "Through-wall entity ESP. Right-click for targets and block picker.", false));
+        add(new Module("ItemESP", "Render", "Highlights dropped items through walls.", false));
+        add(new Module("Tracers", "Render", "Draws lines toward nearby ESP targets.", false));
+        add(new Module("Fullbright", "Render", "Forces maximum vanilla gamma.", false));
 
-        add(new Module("BaseFinder", "World", "Scores loaded storage clusters as possible bases.", false));
+        add(new Module("BaseFinder", "DonutSMP", "Scores loaded storage clusters as possible bases.", false));
+        add(new Module("StorageESP", "DonutSMP", "Finds loaded chests, barrels, hoppers and shulkers.", false));
+        add(new Module("BlockESP", "DonutSMP", "Tracks your chosen blocks in loaded client chunks.", false));
+        add(new Module("Waypoints", "DonutSMP", "Shows saved waypoint markers and distances.", false));
+
+        add(new Module("HUD", "Misc", "Compact Nexora HUD, radar and active modules.", true));
     }
 
     private void add(Module module) {
