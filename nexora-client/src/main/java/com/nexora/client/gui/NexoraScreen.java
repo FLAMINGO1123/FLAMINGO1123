@@ -12,29 +12,37 @@ import java.util.List;
 import java.util.Locale;
 
 public final class NexoraScreen extends Screen {
-    private static final int BG = 0x99000000;
-    private static final int PANEL = 0xF0111017;
-    private static final int SIDEBAR = 0xF016141D;
-    private static final int CARD = 0xE91B1923;
-    private static final int CARD_HOVER = 0xF2252230;
+    private static final int PANEL = 0xE813111A;
+    private static final int PANEL_2 = 0xEE18151F;
+    private static final int ROW = 0xE51E1A26;
+    private static final int ROW_HOVER = 0xF02A2336;
+    private static final int SELECTED = 0xFF2B2240;
     private static final int PURPLE = 0xFF8B5CF6;
-    private static final int PURPLE_SOFT = 0xFFB99CFF;
-    private static final int TEXT = 0xFFF4F1FA;
-    private static final int MUTED = 0xFF9D96A8;
-    private static final int GREEN = 0xFF63E6A6;
-    private static final int RED = 0xFFFF6B7A;
+    private static final int PURPLE_LIGHT = 0xFFB89BFF;
+    private static final int TEXT = 0xFFF5F2FA;
+    private static final int MUTED = 0xFF9A93A6;
+    private static final int GREEN = 0xFF65E6A5;
+    private static final int RED = 0xFFFF6D7C;
+    private static final int CYAN = 0xFF65ECFF;
+    private static final int GOLD = 0xFFFFD76A;
 
     private static final String[] CATEGORIES = {
-            "Combat", "Movement", "Render", "World", "Misc"
+            "Combat", "Movement", "Render", "World", "DonutSMP", "Misc"
     };
 
     private static final String[][] BLOCK_PRESETS = {
-            {"minecraft:diamond_ore", "Diamond Ore"},
-            {"minecraft:deepslate_diamond_ore", "Deepslate Diamond"},
+            {"minecraft:diamond_ore", "Diamond"},
+            {"minecraft:deepslate_diamond_ore", "Deep Diamond"},
             {"minecraft:ancient_debris", "Ancient Debris"},
             {"minecraft:spawner", "Spawner"},
             {"minecraft:chest", "Chest"},
-            {"minecraft:shulker_box", "Shulker Box"}
+            {"minecraft:trapped_chest", "Trapped Chest"},
+            {"minecraft:barrel", "Barrel"},
+            {"minecraft:hopper", "Hopper"},
+            {"minecraft:ender_chest", "Ender Chest"},
+            {"minecraft:shulker_box", "Shulker"},
+            {"minecraft:emerald_ore", "Emerald"},
+            {"minecraft:deepslate_emerald_ore", "Deep Emerald"}
     };
 
     private final NexoraClient nexora;
@@ -49,191 +57,271 @@ public final class NexoraScreen extends Screen {
 
     @Override
     protected void init() {
-        // Custom-drawn UI: no vanilla gray widgets.
+        // Fully custom compact click GUI.
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
-        context.fill(0, 0, width, height, BG);
-
         Layout l = layout();
 
-        shadow(context, l.x, l.y, l.w, l.h);
-        context.fill(l.x, l.y, l.x + l.w, l.y + l.h, PANEL);
-        context.fill(l.x, l.y, l.x + l.sidebarW, l.y + l.h, SIDEBAR);
-        context.fill(l.x, l.y, l.x + l.w, l.y + 2, PURPLE);
+        // No full-screen dim. The world remains visible like Meteor.
+        shadow(context, l.x, l.y, l.leftW, l.h);
+        context.fill(l.x, l.y, l.x + l.leftW, l.y + l.h, PANEL);
+        context.fill(l.x, l.y, l.x + l.leftW, l.y + 2, PURPLE);
 
         drawSidebar(context, mouseX, mouseY, l);
-        drawModules(context, mouseX, mouseY, l);
-        drawSettings(context, mouseX, mouseY, l);
+        drawModuleColumn(context, mouseX, mouseY, l);
+
+        if (selected != null) {
+            int sx = l.x + l.leftW + 7;
+            shadow(context, sx, l.y, l.settingsW, l.h);
+            context.fill(sx, l.y, sx + l.settingsW, l.y + l.h, PANEL_2);
+            context.fill(sx, l.y, sx + l.settingsW, l.y + 2, PURPLE);
+            drawSettings(context, mouseX, mouseY, l, sx);
+        }
     }
 
     private void drawSidebar(DrawContext context, int mouseX, int mouseY, Layout l) {
-        int x = l.x + 12;
-        int y = l.y + 13;
+        int x = l.x + 10;
+        int y = l.y + 10;
 
-        context.drawTextWithShadow(textRenderer, "✦ NEXORA", x, y, PURPLE_SOFT);
-        context.drawTextWithShadow(textRenderer, "CLIENT 0.2", x, y + 14, MUTED);
+        context.drawTextWithShadow(textRenderer, "✦ Nexora Client", x, y, PURPLE_LIGHT);
+        context.drawTextWithShadow(textRenderer, "0.3 • Fabric 1.21.11", x, y + 13, MUTED);
 
-        y += 48;
+        y += 43;
         for (String cat : CATEGORIES) {
             boolean active = cat.equals(category);
-            boolean hover = inside(mouseX, mouseY, l.x + 6, y - 5, l.sidebarW - 12, 22);
+            boolean hover = inside(mouseX, mouseY, l.x + 5, y - 4, l.sidebarW - 10, 21);
+
             if (active) {
-                context.fill(l.x + 5, y - 5, l.x + l.sidebarW - 5, y + 17, 0x552F2450);
-                context.fill(l.x + 5, y - 5, l.x + 8, y + 17, PURPLE);
+                context.fill(l.x + 5, y - 4, l.x + l.sidebarW - 5, y + 17, 0x8832254D);
+                context.fill(l.x + 5, y - 4, l.x + 8, y + 17, PURPLE);
             } else if (hover) {
-                context.fill(l.x + 5, y - 5, l.x + l.sidebarW - 5, y + 17, 0x332B2733);
+                context.fill(l.x + 5, y - 4, l.x + l.sidebarW - 5, y + 17, 0x55231E2B);
             }
-            context.drawTextWithShadow(textRenderer, cat, x, y, active ? PURPLE_SOFT : TEXT);
-            y += 26;
+
+            int color = active ? PURPLE_LIGHT : TEXT;
+            context.drawTextWithShadow(textRenderer, cat, x, y, color);
+
+            int count = nexora.modules().category(cat).size();
+            if (count > 0) {
+                String badge = String.valueOf(count);
+                context.drawTextWithShadow(textRenderer, badge,
+                        l.x + l.sidebarW - 17, y, active ? PURPLE_LIGHT : MUTED);
+            }
+            y += 24;
         }
 
-        int fy = l.y + l.h - 37;
-        context.drawTextWithShadow(textRenderer, "Right Shift", x, fy, MUTED);
-        context.drawTextWithShadow(textRenderer, "Right-click = settings", x, fy + 12, MUTED);
+        int fy = l.y + l.h - 44;
+        context.drawTextWithShadow(textRenderer, "Right Shift  close", x, fy, MUTED);
+        context.drawTextWithShadow(textRenderer, "L-click toggle", x, fy + 11, MUTED);
+        context.drawTextWithShadow(textRenderer, "R-click settings", x, fy + 22, MUTED);
     }
 
-    private void drawModules(DrawContext context, int mouseX, int mouseY, Layout l) {
-        int x = l.x + l.sidebarW + 10;
-        int y = l.y + 12;
-        int w = l.moduleW - 20;
+    private void drawModuleColumn(DrawContext context, int mouseX, int mouseY, Layout l) {
+        int x = l.x + l.sidebarW + 7;
+        int y = l.y + 10;
+        int w = l.moduleW - 14;
 
         context.drawTextWithShadow(textRenderer, category.toUpperCase(Locale.ROOT), x, y, TEXT);
-        context.drawTextWithShadow(textRenderer, "left toggle • right settings", x, y + 13, MUTED);
+        context.drawTextWithShadow(textRenderer, "modules", x, y + 12, MUTED);
 
-        y += 39;
-        List<Module> list = nexora.modules().category(category);
-        if (list.isEmpty()) {
-            context.drawTextWithShadow(textRenderer, "No modules here yet.", x, y, MUTED);
+        y += 34;
+        List<Module> modules = nexora.modules().category(category);
+        if (modules.isEmpty()) {
+            context.drawTextWithShadow(textRenderer, "Nothing here yet.", x, y, MUTED);
             return;
         }
 
-        for (Module module : list) {
-            boolean hover = inside(mouseX, mouseY, x, y, w, 31);
+        for (Module module : modules) {
+            boolean hover = inside(mouseX, mouseY, x, y, w, 25);
             boolean chosen = selected != null && selected.name().equals(module.name());
-            int color = chosen ? 0xFF262032 : (hover ? CARD_HOVER : CARD);
-            context.fill(x, y, x + w, y + 31, color);
-            if (chosen) context.fill(x, y, x + 3, y + 31, PURPLE);
 
-            context.drawTextWithShadow(textRenderer, module.name(), x + 9, y + 7, TEXT);
-            drawToggle(context, x + w - 35, y + 7, module.enabled());
+            context.fill(x, y, x + w, y + 25, chosen ? SELECTED : (hover ? ROW_HOVER : ROW));
+            if (chosen) context.fill(x, y, x + 2, y + 25, PURPLE);
 
-            y += 36;
+            context.drawTextWithShadow(textRenderer, module.name(), x + 7, y + 8,
+                    module.enabled() ? TEXT : 0xFFD5CFDD);
+            drawToggle(context, x + w - 31, y + 6, module.enabled());
+
+            y += 29;
         }
     }
 
-    private void drawSettings(DrawContext context, int mouseX, int mouseY, Layout l) {
-        int x = l.x + l.sidebarW + l.moduleW + 10;
-        int y = l.y + 12;
-        int w = l.w - l.sidebarW - l.moduleW - 20;
+    private void drawSettings(DrawContext context, int mouseX, int mouseY, Layout l, int x) {
+        int y = l.y + 10;
+        int w = l.settingsW - 20;
+        int cx = x + 10;
 
-        context.drawTextWithShadow(textRenderer, "SETTINGS", x, y, TEXT);
-
-        if (selected == null) {
-            context.drawTextWithShadow(textRenderer, "Right-click a module.", x, y + 27, MUTED);
-            return;
-        }
-
-        context.drawTextWithShadow(textRenderer, selected.name(), x, y + 20, PURPLE_SOFT);
-        drawWrapped(context, selected.description(), x, y + 34, w, MUTED);
-        y += 60;
+        context.drawTextWithShadow(textRenderer, selected.name(), cx, y, PURPLE_LIGHT);
+        context.drawTextWithShadow(textRenderer, selected.category(), x + l.settingsW - 60, y, MUTED);
+        y += 15;
+        drawWrapped(context, selected.description(), cx, y, w, MUTED, 2);
+        y += 29;
 
         switch (selected.name()) {
-            case "ESP", "BlockESP" -> drawEspSettings(context, mouseX, mouseY, x, y, w);
-            case "Fly" -> drawFloatSetting(context, mouseX, mouseY, x, y, w,
-                    "Fly speed", nexora.flySpeed(), 0.05f, 1.0f);
-            case "Speed" -> drawFloatSetting(context, mouseX, mouseY, x, y, w,
-                    "Multiplier", nexora.speedMultiplier(), 1.0f, 3.0f);
-            case "BaseFinder" -> {
-                settingRow(context, mouseX, mouseY, x, y, w, "Storage cluster scan", selected.enabled());
-                context.drawTextWithShadow(textRenderer, "Uses loaded nearby blocks only.", x, y + 29, MUTED);
-            }
+            case "ESP" -> drawEspSettings(context, mouseX, mouseY, cx, y, w);
+            case "BlockESP" -> drawBlockSettings(context, mouseX, mouseY, cx, y, w, true);
+            case "Fly" -> drawFloatSetting(context, mouseX, mouseY, cx, y, w,
+                    "Fly Speed", nexora.flySpeed(), 0.05f, 1.0f);
+            case "Speed" -> drawFloatSetting(context, mouseX, mouseY, cx, y, w,
+                    "Speed Multiplier", nexora.speedMultiplier(), 1.0f, 3.0f);
             case "StorageESP" -> {
-                settingRow(context, mouseX, mouseY, x, y, w, "Storage scan", selected.enabled());
-                context.drawTextWithShadow(textRenderer, "Chest • Barrel • Hopper • Shulker", x, y + 29, MUTED);
+                settingRow(context, mouseX, mouseY, cx, y, w, "Storage ESP", selected.enabled());
+                y += 24;
+                info(context, cx, y, "Gold boxes + through-wall labels");
+                info(context, cx, y + 12, "Chest / barrel / hopper / shulker");
+            }
+            case "BaseFinder" -> {
+                settingRow(context, mouseX, mouseY, cx, y, w, "Base Finder", selected.enabled());
+                y += 24;
+                info(context, cx, y, "Clusters loaded storage locations.");
+                info(context, cx, y + 12, "Purple markers = stronger cluster score.");
+            }
+            case "Waypoints" -> {
+                settingRow(context, mouseX, mouseY, cx, y, w, "Waypoint ESP", selected.enabled());
+                y += 24;
+                info(context, cx, y, "Use .wp add <name> at your position.");
+                info(context, cx, y + 12, "Labels stay visible through walls.");
+            }
+            case "Tracers" -> {
+                settingRow(context, mouseX, mouseY, cx, y, w, "Tracers", selected.enabled());
+                y += 24;
+                info(context, cx, y, "Tracks enabled ESP targets.");
             }
             default -> {
-                settingRow(context, mouseX, mouseY, x, y, w, "Enabled", selected.enabled());
-                context.drawTextWithShadow(textRenderer, "Left-click module to toggle.", x, y + 29, MUTED);
+                settingRow(context, mouseX, mouseY, cx, y, w, "Enabled", selected.enabled());
+                y += 24;
+                info(context, cx, y, "Left-click the module to toggle it.");
             }
         }
     }
 
     private void drawEspSettings(DrawContext context, int mouseX, int mouseY, int x, int y, int w) {
-        settingRow(context, mouseX, mouseY, x, y, w, "Players", nexora.espPlayers());
-        y += 25;
-        settingRow(context, mouseX, mouseY, x, y, w, "Mobs", nexora.espMobs());
-        y += 25;
-        settingRow(context, mouseX, mouseY, x, y, w, "Block ESP", nexora.modules().enabled("BlockESP"));
+        section(context, x, y, "ENTITY TARGETS");
+        y += 14;
+
+        settingRow(context, mouseX, mouseY, x, y, w, "Players • wall glow", nexora.espPlayers());
+        y += 22;
+        settingRow(context, mouseX, mouseY, x, y, w, "Mobs • wall glow", nexora.espMobs());
+        y += 22;
+        settingRow(context, mouseX, mouseY, x, y, w, "Dropped Items", nexora.modules().enabled("ItemESP"));
+        y += 22;
+        settingRow(context, mouseX, mouseY, x, y, w, "End Crystals", nexora.modules().enabled("CrystalESP"));
+        y += 22;
+        settingRow(context, mouseX, mouseY, x, y, w, "Tracers", nexora.modules().enabled("Tracers"));
+        y += 24;
+
+        numericRow(context, mouseX, mouseY, x, y, w, "Entity Range", nexora.espRange());
+        y += 26;
+
+        section(context, x, y, "BLOCK ESP");
+        y += 14;
+        settingRow(context, mouseX, mouseY, x, y, w, "Enable Block ESP", nexora.modules().enabled("BlockESP"));
+        y += 22;
+        numericRow(context, mouseX, mouseY, x, y, w, "Block Range", nexora.blockEsp().scanRange());
         y += 27;
 
-        context.drawTextWithShadow(textRenderer, "Scan range", x, y + 4, MUTED);
-        drawSmallButton(context, mouseX, mouseY, x + w - 86, y, 22, 18, "−");
-        context.drawCenteredTextWithShadow(textRenderer, String.valueOf(nexora.blockEsp().scanRange()), x + w - 52, y + 5, TEXT);
-        drawSmallButton(context, mouseX, mouseY, x + w - 24, y, 22, 18, "+");
-        y += 28;
+        drawBlockGrid(context, mouseX, mouseY, x, y, w);
+    }
 
-        context.drawTextWithShadow(textRenderer, "TRACKED BLOCKS", x, y, MUTED);
-        context.drawTextWithShadow(textRenderer, "click to add/remove", x + Math.max(76, w - 96), y, 0xFF777080);
-        y += 15;
-
-        int rowH = 18;
-        for (String[] preset : BLOCK_PRESETS) {
-            if (y + rowH > height - 14) break;
-            boolean active = nexora.blockEsp().contains(preset[0]);
-            boolean hover = inside(mouseX, mouseY, x, y, w, rowH - 1);
-            context.fill(x, y, x + w, y + rowH - 1, hover ? CARD_HOVER : 0xAA181620);
-            context.drawTextWithShadow(textRenderer, preset[1], x + 6, y + 5, active ? TEXT : MUTED);
-            context.drawTextWithShadow(textRenderer, active ? "✓" : "+", x + w - 14, y + 5, active ? GREEN : PURPLE_SOFT);
-            y += rowH;
+    private void drawBlockSettings(DrawContext context, int mouseX, int mouseY, int x, int y, int w, boolean title) {
+        if (title) {
+            settingRow(context, mouseX, mouseY, x, y, w, "Block ESP", nexora.modules().enabled("BlockESP"));
+            y += 22;
+            numericRow(context, mouseX, mouseY, x, y, w, "Scan Range", nexora.blockEsp().scanRange());
+            y += 27;
         }
+        drawBlockGrid(context, mouseX, mouseY, x, y, w);
+    }
+
+    private void drawBlockGrid(DrawContext context, int mouseX, int mouseY, int x, int y, int w) {
+        section(context, x, y, "CLICK BLOCKS TO ADD / REMOVE");
+        y += 14;
+
+        int gap = 4;
+        int colW = (w - gap) / 2;
+        int rowH = 19;
+
+        for (int i = 0; i < BLOCK_PRESETS.length; i++) {
+            int col = i % 2;
+            int row = i / 2;
+            int bx = x + col * (colW + gap);
+            int by = y + row * rowH;
+            boolean active = nexora.blockEsp().contains(BLOCK_PRESETS[i][0]);
+            boolean hover = inside(mouseX, mouseY, bx, by, colW, rowH - 2);
+
+            context.fill(bx, by, bx + colW, by + rowH - 2, hover ? ROW_HOVER : ROW);
+            context.drawTextWithShadow(textRenderer, BLOCK_PRESETS[i][1], bx + 5, by + 5,
+                    active ? TEXT : MUTED);
+            context.drawTextWithShadow(textRenderer, active ? "✓" : "+",
+                    bx + colW - 12, by + 5, active ? GREEN : PURPLE_LIGHT);
+        }
+
+        int bottom = y + 6 * rowH + 3;
+        context.drawTextWithShadow(textRenderer, ".blockesp add minecraft:block",
+                x, bottom, MUTED);
     }
 
     private void drawFloatSetting(DrawContext context, int mouseX, int mouseY, int x, int y, int w,
                                   String name, float value, float min, float max) {
-        context.fill(x, y, x + w, y + 34, CARD);
-        context.drawTextWithShadow(textRenderer, name, x + 8, y + 7, TEXT);
+        context.fill(x, y, x + w, y + 36, ROW);
+        context.drawTextWithShadow(textRenderer, name, x + 7, y + 7, TEXT);
         context.drawTextWithShadow(textRenderer,
-                String.format(Locale.ROOT, "%.2f", value), x + 8, y + 20, PURPLE_SOFT);
+                String.format(Locale.ROOT, "%.2f", value), x + 7, y + 20, PURPLE_LIGHT);
 
-        drawSmallButton(context, mouseX, mouseY, x + w - 54, y + 8, 20, 18, "−");
-        drawSmallButton(context, mouseX, mouseY, x + w - 27, y + 8, 20, 18, "+");
+        drawSmallButton(context, mouseX, mouseY, x + w - 51, y + 9, 20, 18, "−");
+        drawSmallButton(context, mouseX, mouseY, x + w - 24, y + 9, 20, 18, "+");
 
-        int barX = x;
-        int barY = y + 40;
-        int barW = w;
-        context.fill(barX, barY, barX + barW, barY + 4, 0xFF2D2935);
+        int barY = y + 42;
+        context.fill(x, barY, x + w, barY + 3, 0xFF302A39);
         float t = (value - min) / (max - min);
-        context.fill(barX, barY, barX + (int) (barW * t), barY + 4, PURPLE);
+        context.fill(x, barY, x + (int)(w * t), barY + 3, PURPLE);
+    }
+
+    private void numericRow(DrawContext context, int mouseX, int mouseY, int x, int y, int w,
+                            String name, int value) {
+        context.fill(x, y, x + w, y + 22, ROW);
+        context.drawTextWithShadow(textRenderer, name, x + 7, y + 7, TEXT);
+        drawSmallButton(context, mouseX, mouseY, x + w - 72, y + 2, 20, 18, "−");
+        context.drawCenteredTextWithShadow(textRenderer, String.valueOf(value), x + w - 40, y + 7, TEXT);
+        drawSmallButton(context, mouseX, mouseY, x + w - 22, y + 2, 20, 18, "+");
     }
 
     private void settingRow(DrawContext context, int mouseX, int mouseY, int x, int y, int w,
                             String name, boolean enabled) {
-        boolean hover = inside(mouseX, mouseY, x, y, w, 22);
-        context.fill(x, y, x + w, y + 22, hover ? CARD_HOVER : CARD);
-        context.drawTextWithShadow(textRenderer, name, x + 7, y + 7, TEXT);
-        drawToggle(context, x + w - 35, y + 4, enabled);
+        boolean hover = inside(mouseX, mouseY, x, y, w, 20);
+        context.fill(x, y, x + w, y + 20, hover ? ROW_HOVER : ROW);
+        context.drawTextWithShadow(textRenderer, name, x + 6, y + 6, TEXT);
+        drawToggle(context, x + w - 30, y + 3, enabled);
     }
 
     private void drawToggle(DrawContext context, int x, int y, boolean on) {
-        context.fill(x, y, x + 28, y + 14, on ? PURPLE : 0xFF3A3542);
-        int knobX = on ? x + 16 : x + 2;
-        context.fill(knobX, y + 2, knobX + 10, y + 12, 0xFFF3F0F8);
+        context.fill(x, y, x + 25, y + 13, on ? PURPLE : 0xFF403A48);
+        int knobX = on ? x + 14 : x + 2;
+        context.fill(knobX, y + 2, knobX + 9, y + 11, 0xFFF5F2F9);
     }
 
     private void drawSmallButton(DrawContext context, int mouseX, int mouseY,
                                  int x, int y, int w, int h, String label) {
         boolean hover = inside(mouseX, mouseY, x, y, w, h);
-        context.fill(x, y, x + w, y + h, hover ? 0xFF493762 : 0xFF30283E);
+        context.fill(x, y, x + w, y + h, hover ? 0xFF4C3A68 : 0xFF342B43);
         context.drawCenteredTextWithShadow(textRenderer, label, x + w / 2, y + 5, TEXT);
     }
 
-    private void drawWrapped(DrawContext context, String text, int x, int y, int width, int color) {
-        int maxChars = Math.max(18, width / 6);
+    private void section(DrawContext context, int x, int y, String label) {
+        context.drawTextWithShadow(textRenderer, label, x, y, MUTED);
+    }
+
+    private void info(DrawContext context, int x, int y, String label) {
+        context.drawTextWithShadow(textRenderer, label, x, y, MUTED);
+    }
+
+    private void drawWrapped(DrawContext context, String text, int x, int y, int width, int color, int maxLines) {
+        int maxChars = Math.max(20, width / 6);
         String remaining = text;
         int line = 0;
-        while (!remaining.isEmpty() && line < 2) {
+        while (!remaining.isEmpty() && line < maxLines) {
             if (remaining.length() <= maxChars) {
                 context.drawTextWithShadow(textRenderer, remaining, x, y + line * 11, color);
                 break;
@@ -253,119 +341,181 @@ public final class NexoraScreen extends Screen {
         double my = click.y();
         int button = click.button();
 
-        int cy = l.y + 60;
+        int cy = l.y + 53;
         for (String cat : CATEGORIES) {
-            if (inside(mx, my, l.x + 5, cy - 5, l.sidebarW - 10, 22)) {
+            if (inside(mx, my, l.x + 5, cy - 4, l.sidebarW - 10, 21)) {
                 category = cat;
                 List<Module> list = nexora.modules().category(category);
                 selected = list.isEmpty() ? null : list.getFirst();
                 return true;
             }
-            cy += 26;
+            cy += 24;
         }
 
-        int moduleX = l.x + l.sidebarW + 10;
-        int moduleY = l.y + 51;
-        int moduleW = l.moduleW - 20;
+        int moduleX = l.x + l.sidebarW + 7;
+        int moduleY = l.y + 44;
+        int moduleW = l.moduleW - 14;
         for (Module module : nexora.modules().category(category)) {
-            if (inside(mx, my, moduleX, moduleY, moduleW, 31)) {
-                if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-                    selected = module;
-                    return true;
-                }
+            if (inside(mx, my, moduleX, moduleY, moduleW, 25)) {
+                selected = module;
                 if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                     module.toggle();
                     nexora.onModuleToggled(module);
-                    selected = module;
-                    return true;
                 }
+                return true;
             }
-            moduleY += 36;
+            moduleY += 29;
         }
 
-        if (selected != null && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            int sx = l.x + l.sidebarW + l.moduleW + 10;
-            int sy = l.y + 72;
-            int sw = l.w - l.sidebarW - l.moduleW - 20;
+        if (selected == null || button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            return super.mouseClicked(click, doubled);
+        }
 
-            if (selected.name().equals("ESP") || selected.name().equals("BlockESP")) {
-                if (inside(mx, my, sx, sy, sw, 22)) {
-                    nexora.setEspPlayers(!nexora.espPlayers());
-                    return true;
-                }
-                sy += 25;
-                if (inside(mx, my, sx, sy, sw, 22)) {
-                    nexora.setEspMobs(!nexora.espMobs());
-                    return true;
-                }
-                sy += 25;
-                if (inside(mx, my, sx, sy, sw, 22)) {
-                    Module block = nexora.modules().get("BlockESP");
-                    block.toggle();
-                    nexora.onModuleToggled(block);
-                    return true;
-                }
-                sy += 27;
+        int sx = l.x + l.leftW + 17;
+        int sy = l.y + 54;
+        int sw = l.settingsW - 20;
 
-                if (inside(mx, my, sx + sw - 86, sy, 22, 18)) {
-                    nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() - 4);
-                    return true;
-                }
-                if (inside(mx, my, sx + sw - 24, sy, 22, 18)) {
-                    nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() + 4);
-                    return true;
-                }
-
-                sy += 43;
-                for (String[] preset : BLOCK_PRESETS) {
-                    if (inside(mx, my, sx, sy, sw, 17)) {
-                        nexora.blockEsp().toggle(preset[0]);
-                        return true;
-                    }
-                    sy += 18;
-                }
+        if (selected.name().equals("ESP")) {
+            if (inside(mx, my, sx, sy, sw, 20)) {
+                nexora.setEspPlayers(!nexora.espPlayers());
+                return true;
             }
-
-            if (selected.name().equals("Fly")) {
-                if (inside(mx, my, sx + sw - 54, sy + 8, 20, 18)) {
-                    nexora.setFlySpeed(nexora.flySpeed() - 0.05f);
-                    return true;
-                }
-                if (inside(mx, my, sx + sw - 27, sy + 8, 20, 18)) {
-                    nexora.setFlySpeed(nexora.flySpeed() + 0.05f);
-                    return true;
-                }
+            sy += 22;
+            if (inside(mx, my, sx, sy, sw, 20)) {
+                nexora.setEspMobs(!nexora.espMobs());
+                return true;
             }
+            sy += 22;
+            if (inside(mx, my, sx, sy, sw, 20)) {
+                toggleModule("ItemESP");
+                return true;
+            }
+            sy += 22;
+            if (inside(mx, my, sx, sy, sw, 20)) {
+                toggleModule("CrystalESP");
+                return true;
+            }
+            sy += 22;
+            if (inside(mx, my, sx, sy, sw, 20)) {
+                toggleModule("Tracers");
+                return true;
+            }
+            sy += 24;
 
-            if (selected.name().equals("Speed")) {
-                if (inside(mx, my, sx + sw - 54, sy + 8, 20, 18)) {
-                    nexora.setSpeedMultiplier(nexora.speedMultiplier() - 0.10f);
-                    return true;
-                }
-                if (inside(mx, my, sx + sw - 27, sy + 8, 20, 18)) {
-                    nexora.setSpeedMultiplier(nexora.speedMultiplier() + 0.10f);
-                    return true;
-                }
+            if (inside(mx, my, sx + sw - 72, sy + 2, 20, 18)) {
+                nexora.setEspRange(nexora.espRange() - 16);
+                return true;
+            }
+            if (inside(mx, my, sx + sw - 22, sy + 2, 20, 18)) {
+                nexora.setEspRange(nexora.espRange() + 16);
+                return true;
+            }
+            sy += 40;
+
+            if (inside(mx, my, sx, sy, sw, 20)) {
+                toggleModule("BlockESP");
+                return true;
+            }
+            sy += 22;
+            if (inside(mx, my, sx + sw - 72, sy + 2, 20, 18)) {
+                nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() - 8);
+                return true;
+            }
+            if (inside(mx, my, sx + sw - 22, sy + 2, 20, 18)) {
+                nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() + 8);
+                return true;
+            }
+            sy += 41;
+
+            if (handleBlockGridClick(mx, my, sx, sy, sw)) return true;
+        }
+
+        if (selected.name().equals("BlockESP")) {
+            if (inside(mx, my, sx, sy, sw, 20)) {
+                toggleModule("BlockESP");
+                return true;
+            }
+            sy += 22;
+
+            if (inside(mx, my, sx + sw - 72, sy + 2, 20, 18)) {
+                nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() - 8);
+                return true;
+            }
+            if (inside(mx, my, sx + sw - 22, sy + 2, 20, 18)) {
+                nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() + 8);
+                return true;
+            }
+            sy += 41;
+            if (handleBlockGridClick(mx, my, sx, sy, sw)) return true;
+        }
+
+        if (selected.name().equals("Fly")) {
+            if (inside(mx, my, sx + sw - 51, sy + 9, 20, 18)) {
+                nexora.setFlySpeed(nexora.flySpeed() - 0.05f);
+                return true;
+            }
+            if (inside(mx, my, sx + sw - 24, sy + 9, 20, 18)) {
+                nexora.setFlySpeed(nexora.flySpeed() + 0.05f);
+                return true;
+            }
+        }
+
+        if (selected.name().equals("Speed")) {
+            if (inside(mx, my, sx + sw - 51, sy + 9, 20, 18)) {
+                nexora.setSpeedMultiplier(nexora.speedMultiplier() - 0.10f);
+                return true;
+            }
+            if (inside(mx, my, sx + sw - 24, sy + 9, 20, 18)) {
+                nexora.setSpeedMultiplier(nexora.speedMultiplier() + 0.10f);
+                return true;
             }
         }
 
         return super.mouseClicked(click, doubled);
     }
 
-    private Layout layout() {
-        int w = Math.min(760, Math.max(420, width - 16));
-        int h = Math.min(410, Math.max(220, height - 16));
-        int x = (width - w) / 2;
-        int y = (height - h) / 2;
+    private boolean handleBlockGridClick(double mx, double my, int x, int y, int w) {
+        int gap = 4;
+        int colW = (w - gap) / 2;
+        int rowH = 19;
 
-        int sidebarW = w < 560 ? 105 : 125;
-        int moduleW = w < 560 ? 145 : 185;
-        return new Layout(x, y, w, h, sidebarW, moduleW);
+        for (int i = 0; i < BLOCK_PRESETS.length; i++) {
+            int col = i % 2;
+            int row = i / 2;
+            int bx = x + col * (colW + gap);
+            int by = y + row * rowH;
+            if (inside(mx, my, bx, by, colW, rowH - 2)) {
+                nexora.blockEsp().toggle(BLOCK_PRESETS[i][0]);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void toggleModule(String name) {
+        Module module = nexora.modules().get(name);
+        if (module != null) {
+            module.toggle();
+            nexora.onModuleToggled(module);
+        }
+    }
+
+    private Layout layout() {
+        int sidebarW = 145;
+        int moduleW = 155;
+        int leftW = sidebarW + moduleW;
+        int settingsW = 300;
+        int h = Math.min(390, Math.max(300, height - 20));
+
+        int x = 10;
+        int y = 10;
+
+        return new Layout(x, y, h, sidebarW, moduleW, leftW, settingsW);
     }
 
     private void shadow(DrawContext context, int x, int y, int w, int h) {
-        context.fill(x - 4, y - 4, x + w + 4, y + h + 4, 0x44000000);
-        context.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0x55000000);
+        context.fill(x - 3, y - 3, x + w + 3, y + h + 3, 0x55000000);
+        context.fill(x - 1, y - 1, x + w + 1, y + h + 1, 0x66000000);
     }
 
     private boolean inside(double mx, double my, int x, int y, int w, int h) {
@@ -377,5 +527,5 @@ public final class NexoraScreen extends Screen {
         return false;
     }
 
-    private record Layout(int x, int y, int w, int h, int sidebarW, int moduleW) {}
+    private record Layout(int x, int y, int h, int sidebarW, int moduleW, int leftW, int settingsW) {}
 }
