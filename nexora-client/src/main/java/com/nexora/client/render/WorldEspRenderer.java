@@ -8,7 +8,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -63,12 +62,11 @@ public final class WorldEspRenderer {
             for (BaseFinder.BaseCandidate candidate : nexora.baseFinder().candidates()) {
                 if (shown++ >= 10) break;
                 BlockPos p = candidate.pos();
-                double r = Math.min(3.0, 1.0 + candidate.score() * 0.12);
-                WorldRenderer.drawBox(
-                        matrices,
-                        lines,
-                        p.getX() + 0.5 - r, p.getY() - 0.25, p.getZ() + 0.5 - r,
-                        p.getX() + 0.5 + r, p.getY() + 2.0, p.getZ() + 0.5 + r,
+                double radius = Math.min(3.0, 1.0 + candidate.score() * 0.12);
+                drawBox(
+                        matrices, lines,
+                        p.getX() + 0.5 - radius, p.getY() - 0.25, p.getZ() + 0.5 - radius,
+                        p.getX() + 0.5 + radius, p.getY() + 2.0, p.getZ() + 0.5 + radius,
                         0.72f, 0.28f, 1.00f, 0.95f
                 );
             }
@@ -80,12 +78,55 @@ public final class WorldEspRenderer {
     private void drawBlockBox(MatrixStack matrices, VertexConsumer lines, BlockPos p,
                               float r, float g, float b, float a) {
         double e = 0.003;
-        WorldRenderer.drawBox(
-                matrices,
-                lines,
+        drawBox(
+                matrices, lines,
                 p.getX() + e, p.getY() + e, p.getZ() + e,
                 p.getX() + 1.0 - e, p.getY() + 1.0 - e, p.getZ() + 1.0 - e,
                 r, g, b, a
         );
+    }
+
+    private void drawBox(MatrixStack matrices, VertexConsumer out,
+                         double x1, double y1, double z1,
+                         double x2, double y2, double z2,
+                         float r, float g, float b, float a) {
+        line(matrices, out, x1,y1,z1, x2,y1,z1, r,g,b,a);
+        line(matrices, out, x2,y1,z1, x2,y1,z2, r,g,b,a);
+        line(matrices, out, x2,y1,z2, x1,y1,z2, r,g,b,a);
+        line(matrices, out, x1,y1,z2, x1,y1,z1, r,g,b,a);
+
+        line(matrices, out, x1,y2,z1, x2,y2,z1, r,g,b,a);
+        line(matrices, out, x2,y2,z1, x2,y2,z2, r,g,b,a);
+        line(matrices, out, x2,y2,z2, x1,y2,z2, r,g,b,a);
+        line(matrices, out, x1,y2,z2, x1,y2,z1, r,g,b,a);
+
+        line(matrices, out, x1,y1,z1, x1,y2,z1, r,g,b,a);
+        line(matrices, out, x2,y1,z1, x2,y2,z1, r,g,b,a);
+        line(matrices, out, x2,y1,z2, x2,y2,z2, r,g,b,a);
+        line(matrices, out, x1,y1,z2, x1,y2,z2, r,g,b,a);
+    }
+
+    private void line(MatrixStack matrices, VertexConsumer out,
+                      double x1, double y1, double z1,
+                      double x2, double y2, double z2,
+                      float r, float g, float b, float a) {
+        float dx = (float)(x2 - x1);
+        float dy = (float)(y2 - y1);
+        float dz = (float)(z2 - z1);
+        float len = (float)Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (len < 0.0001f) return;
+        dx /= len;
+        dy /= len;
+        dz /= len;
+
+        MatrixStack.Entry entry = matrices.peek();
+        out.vertex(entry, (float)x1, (float)y1, (float)z1)
+                .color(r, g, b, a)
+                .normal(entry, dx, dy, dz)
+                .lineWidth(2.0f);
+        out.vertex(entry, (float)x2, (float)y2, (float)z2)
+                .color(r, g, b, a)
+                .normal(entry, dx, dy, dz)
+                .lineWidth(2.0f);
     }
 }
