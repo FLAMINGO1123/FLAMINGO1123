@@ -21,6 +21,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
@@ -47,6 +48,7 @@ public final class NexoraClient implements ClientModInitializer {
     private float speedMultiplier = 1.45f;
     private boolean espPlayers = true;
     private boolean espMobs = true;
+    private int espRange = 160;
 
     private boolean rememberedAllowFlying;
     private boolean flyStateCaptured;
@@ -165,18 +167,23 @@ public final class NexoraClient implements ClientModInitializer {
     }
 
     private void handleEsp(MinecraftClient client) {
-        boolean entityEsp = modules.enabled("ESP");
+        boolean livingEsp = modules.enabled("ESP");
         boolean crystalEsp = modules.enabled("CrystalESP");
+        boolean itemEsp = modules.enabled("ItemESP");
+        double maxSq = (double) espRange * espRange;
 
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player) continue;
-            if (entity.squaredDistanceTo(client.player) > 160 * 160) continue;
+            if (entity.squaredDistanceTo(client.player) > maxSq) {
+                if (entity.isGlowingLocal()) entity.setGlowing(false);
+                continue;
+            }
 
             boolean glow = false;
-            if (crystalEsp && entity.getType() == EntityType.END_CRYSTAL) {
-                glow = true;
-            }
-            if (entityEsp && entity instanceof LivingEntity) {
+            if (crystalEsp && entity.getType() == EntityType.END_CRYSTAL) glow = true;
+            if (itemEsp && entity instanceof ItemEntity) glow = true;
+
+            if (livingEsp && entity instanceof LivingEntity) {
                 if (entity instanceof PlayerEntity) glow = espPlayers;
                 else glow = espMobs;
             }
@@ -198,41 +205,41 @@ public final class NexoraClient implements ClientModInitializer {
 
         int x = 7;
         int y = 7;
-        context.fill(3, 3, 164, 33, panel);
-        context.fill(3, 3, 164, 5, purple2);
-        context.drawTextWithShadow(client.textRenderer, "NEXORA", x, y, purple);
+        context.fill(3, 3, 170, 34, panel);
+        context.fill(3, 3, 170, 5, purple2);
+        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V3", x, y, purple);
         context.drawTextWithShadow(client.textRenderer,
                 "XYZ " + client.player.getBlockX() + " " + client.player.getBlockY() + " " + client.player.getBlockZ(),
                 x, y + 13, white);
 
-        int line = y + 37;
+        int line = y + 38;
         for (Module module : modules.all()) {
             if (!module.enabled() || module.name().equals("HUD")) continue;
             context.drawTextWithShadow(client.textRenderer, module.name(), x, line, purple);
             line += 11;
-            if (line > 170) break;
+            if (line > 182) break;
         }
 
         boolean showRadar = modules.enabled("BlockESP") || modules.enabled("StorageESP") || modules.enabled("BaseFinder");
         if (!showRadar) return;
 
-        int radarW = 190;
+        int radarW = 198;
         int rx = Math.max(4, context.getScaledWindowWidth() - radarW - 6);
         int ry = 6;
-        int maxRows = 9;
-        int radarH = 31 + maxRows * 11;
+        int maxRows = 10;
+        int radarH = 32 + maxRows * 11;
         context.fill(rx, ry, rx + radarW, ry + radarH, panel);
         context.fill(rx, ry, rx + radarW, ry + 2, purple2);
         context.drawTextWithShadow(client.textRenderer, "NEXORA RADAR", rx + 7, ry + 7, purple);
-        context.drawTextWithShadow(client.textRenderer, "loaded client data", rx + 7, ry + 18, muted);
+        context.drawTextWithShadow(client.textRenderer, "through-wall target list", rx + 7, ry + 18, muted);
 
         int row = 0;
-        int ty = ry + 33;
+        int ty = ry + 34;
 
         if (modules.enabled("BaseFinder")) {
             for (BaseFinder.BaseCandidate candidate : baseFinder.candidates()) {
                 if (row++ >= maxRows) break;
-                String s = "Possible Base  " + (int) candidate.distance() + "m  [" + candidate.score() + "]";
+                String s = "BASE? " + (int) candidate.distance() + "m  score " + candidate.score();
                 context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFFFF72E8);
                 ty += 11;
             }
@@ -272,11 +279,11 @@ public final class NexoraClient implements ClientModInitializer {
     public void onModuleToggled(Module module) {
         MinecraftClient client = MinecraftClient.getInstance();
 
-        if ((module.name().equalsIgnoreCase("ESP") || module.name().equalsIgnoreCase("CrystalESP"))
+        if ((module.name().equalsIgnoreCase("ESP")
+                || module.name().equalsIgnoreCase("CrystalESP")
+                || module.name().equalsIgnoreCase("ItemESP"))
                 && !module.enabled() && client.world != null) {
-            for (Entity entity : client.world.getEntities()) {
-                if (entity != client.player && entity.isGlowingLocal()) entity.setGlowing(false);
-            }
+            handleEsp(client);
         }
 
         if (module.name().equalsIgnoreCase("AutoWalk") && !module.enabled()) {
@@ -307,6 +314,9 @@ public final class NexoraClient implements ClientModInitializer {
     public void setSpeedMultiplier(float value) {
         speedMultiplier = Math.max(1.0f, Math.min(3.0f, value));
     }
+
+    public int espRange() { return espRange; }
+    public void setEspRange(int value) { espRange = Math.max(32, Math.min(256, value)); }
 
     public boolean espPlayers() { return espPlayers; }
     public void setEspPlayers(boolean value) { espPlayers = value; }
