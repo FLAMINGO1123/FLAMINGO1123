@@ -36,7 +36,8 @@ public final class CommandManager {
             case "flyspeed" -> flySpeed(client, args);
             case "speed" -> speed(client, args);
             case "blockesp" -> blockEsp(client, args);
-            case "esprange" -> espRange(client, args);\n            case "blockrange" -> blockRange(client, args);
+            case "esprange" -> espRange(client, args);
+            case "blockrange" -> blockRange(client, args);
             case "relog" -> relog(client, args);
             case "waypoint", "wp" -> waypoint(client, args);
             case "modules" -> modules(client);
