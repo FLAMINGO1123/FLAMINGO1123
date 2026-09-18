@@ -18,7 +18,7 @@ public final class BlockEspManager {
 
     private final Set<String> tracked = new LinkedHashSet<>();
     private final List<BlockHit> hits = new ArrayList<>();
-    private int scanRange = 24;
+    private int scanRange = 32;
     private int tickCounter;
 
     public BlockEspManager() {
@@ -32,12 +32,17 @@ public final class BlockEspManager {
         tracked.add("minecraft:ancient_debris");
         tracked.add("minecraft:spawner");
         tracked.add("minecraft:chest");
+        tracked.add("minecraft:trapped_chest");
+        tracked.add("minecraft:barrel");
+        tracked.add("minecraft:hopper");
+        tracked.add("minecraft:ender_chest");
         tracked.add("minecraft:shulker_box");
     }
 
     public boolean add(String id) {
         String normalized = normalize(id);
-        if (Identifier.tryParse(normalized) == null) return false;
+        Identifier identifier = Identifier.tryParse(normalized);
+        if (identifier == null || !Registries.BLOCK.containsId(identifier)) return false;
         return tracked.add(normalized);
     }
 
@@ -47,6 +52,9 @@ public final class BlockEspManager {
 
     public boolean toggle(String id) {
         String normalized = normalize(id);
+        Identifier identifier = Identifier.tryParse(normalized);
+        if (identifier == null || !Registries.BLOCK.containsId(identifier)) return false;
+
         if (tracked.contains(normalized)) {
             tracked.remove(normalized);
             return false;
@@ -77,7 +85,7 @@ public final class BlockEspManager {
     }
 
     public void setScanRange(int value) {
-        scanRange = Math.max(8, Math.min(48, value));
+        scanRange = Math.max(8, Math.min(64, value));
     }
 
     public void tick(MinecraftClient client, boolean enabled) {
@@ -86,14 +94,14 @@ public final class BlockEspManager {
             return;
         }
         if (client.player == null || client.world == null || tracked.isEmpty()) return;
-        if (++tickCounter % 30 != 0) return;
+        if (++tickCounter % 20 != 0) return;
         scan(client);
     }
 
     private void scan(MinecraftClient client) {
         BlockPos center = client.player.getBlockPos();
         int horizontal = scanRange;
-        int vertical = Math.min(20, Math.max(8, scanRange / 2));
+        int vertical = Math.min(32, Math.max(12, scanRange / 2));
 
         List<BlockHit> found = new ArrayList<>();
         int minY = Math.max(client.world.getBottomY(), center.getY() - vertical);
@@ -109,7 +117,7 @@ public final class BlockEspManager {
                     if (tracked.contains(id)) {
                         double distance = Math.sqrt(center.getSquaredDistance(pos));
                         found.add(new BlockHit(pos.toImmutable(), id, distance));
-                        if (found.size() >= 160) break outer;
+                        if (found.size() >= 256) break outer;
                     }
                 }
             }
