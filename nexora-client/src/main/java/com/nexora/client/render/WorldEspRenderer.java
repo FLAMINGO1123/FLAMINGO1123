@@ -4,6 +4,7 @@ import com.nexora.client.NexoraClient;
 import com.nexora.client.feature.BaseFinder;
 import com.nexora.client.feature.BlockEspManager;
 import com.nexora.client.feature.WaypointManager;
+import com.nexora.client.feature.XRayManager;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
@@ -41,8 +42,9 @@ public final class WorldEspRenderer {
         boolean bases = nexora.modules().enabled("BaseFinder");
         boolean waypoints = nexora.modules().enabled("Waypoints");
         boolean tracers = nexora.modules().enabled("Tracers");
+        boolean xray = nexora.modules().enabled("XRay");
 
-        if (!block && !storage && !bases && !waypoints && !tracers) return;
+        if (!block && !storage && !bases && !waypoints && !tracers && !xray) return;
 
         MatrixStack matrices = context.matrices();
         if (matrices == null || context.consumers() == null) return;
@@ -58,6 +60,14 @@ public final class WorldEspRenderer {
             for (BlockEspManager.BlockHit hit : nexora.blockEsp().hits()) {
                 if (shown++ >= 96) break;
                 drawBlockBox(matrices, lines, hit.pos(), 0.15f, 0.90f, 1.00f, 0.95f);
+            }
+        }
+
+        if (xray && nexora.worldBoxes()) {
+            int shown = 0;
+            for (XRayManager.Hit hit : nexora.xray().hits()) {
+                if (shown++ >= 128) break;
+                drawBlockBox(matrices, lines, hit.pos(), 0.35f, 1.00f, 0.55f, 0.95f);
             }
         }
 
@@ -102,6 +112,18 @@ public final class WorldEspRenderer {
                         p.getX() + 0.5, p.getY() + 2.7, p.getZ() + 0.5,
                         "Possible Base  " + (int)candidate.distance() + "m",
                         0xFFFF75EE);
+            }
+        }
+
+        if (xray && nexora.worldLabels()) {
+            int shown = 0;
+            for (XRayManager.Hit hit : nexora.xray().hits()) {
+                if (shown++ >= 24) break;
+                BlockPos p = hit.pos();
+                drawLabel(context, client,
+                        p.getX() + 0.5, p.getY() + 1.25, p.getZ() + 0.5,
+                        "XRay " + shortName(hit.blockId()) + "  " + (int)hit.distance() + "m",
+                        0xFF7CFF9D);
             }
         }
 
