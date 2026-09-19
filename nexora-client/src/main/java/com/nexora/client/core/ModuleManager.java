@@ -55,7 +55,7 @@ public final class ModuleManager {
         add(new Module("AutoDrop", "Player", "Drops one selected item at intervals.", false));
         add(new Module("HandSwing", "Player", "Periodically swings your hand.", false));
         add(new Module("KeepSprint", "Player", "Keeps sprint enabled while moving forward.", false));
-        add(new Module("NoFall", "Player", "Spoofs a local grounded state during long falls.", false));
+        add(new Module("NoFall", "Player", "Singleplayer-only grounded-state NoFall test; disabled on remote multiplayer.", false));
         add(new Module("FastPlace", "Player", "Rapidly uses the held item while use is pressed.", false));
         add(new Module("FastBreak", "Player", "Sends block-break progress every tick on the targeted block.", false));
         add(new Module("Nuker", "Player", "Attempts to break nearby blocks automatically.", false));
