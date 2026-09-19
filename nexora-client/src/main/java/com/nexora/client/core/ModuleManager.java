@@ -81,6 +81,7 @@ public final class ModuleManager {
         add(new Module("AutoMine", "Misc", "Keeps the attack/mine key held.", false));
         add(new Module("AutoUse", "Misc", "Keeps the use-item key held.", false));
         add(new Module("AntiAFK", "Misc", "Adds small periodic camera movement while idle.", false));
+        add(new Module("TestIsolation", "Misc", "Keeps conflicting test modules isolated so anti-cheat results are easier to attribute.", true));
 
         add(new Module("SneakSpam", "Utility", "Rapidly toggles sneak.", false));
         add(new Module("JumpSpam", "Utility", "Automatically jumps at intervals while grounded.", false));
