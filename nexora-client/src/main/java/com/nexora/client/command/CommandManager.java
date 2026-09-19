@@ -40,6 +40,7 @@ public final class CommandManager {
             case "on" -> setModule(client, args, true);
             case "off" -> setModule(client, args, false);
             case "panic" -> panic(client);
+            case "test" -> test(client, args);
             case "settings" -> settings(client, args);
             case "set" -> setSetting(client, args);
 
@@ -77,8 +78,8 @@ public final class CommandManager {
     }
 
     private void help(MinecraftClient client) {
-        chat(client, "§d§lNexora V10 §7commands");
-        chat(client, "§f.gui §8| §f.modules §8| §f.panic");
+        chat(client, "§d§lNexora V10.2 §7commands");
+        chat(client, "§f.gui §8| §f.modules §8| §f.panic §8| §f.test <module>");
         chat(client, "§f.settings <module> §8| §f.set <module> <setting> <value>");
         chat(client, "§7Any module: §f.on <name> §8| §f.off <name> §8| §f.toggle <name>");
         chat(client, "§f.toggle <module> §8| §f.on <module> §8| §f.off <module>");
@@ -169,6 +170,22 @@ public final class CommandManager {
             nexora.onModuleToggled(module);
         }
         chat(client, "§cAll Nexora modules disabled.");
+    }
+
+    private void test(MinecraftClient client, String[] args) {
+        if (args.length < 2) {
+            chat(client, "§cUsage: .test <module>");
+            return;
+        }
+
+        Module module = nexora.modules().get(args[1]);
+        if (module == null) {
+            chat(client, "§cModule not found.");
+            return;
+        }
+
+        nexora.isolateForTest(module);
+        chat(client, "§aTest isolated: §f" + module.name());
     }
 
     private void settings(MinecraftClient client, String[] args) {
