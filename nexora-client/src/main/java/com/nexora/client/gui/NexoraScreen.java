@@ -2,6 +2,7 @@ package com.nexora.client.gui;
 
 import com.nexora.client.NexoraClient;
 import com.nexora.client.core.Module;
+import com.nexora.client.core.ModuleSettings;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -195,40 +196,24 @@ public final class NexoraScreen extends Screen {
 
     private void drawModuleSettings(DrawContext context, int mouseX, int mouseY,
                                     Module module, int tab, int x, int y, int w) {
+        if (tab == 0) {
+            drawRegistrySettings(context, mouseX, mouseY, module, x, y, w);
+            return;
+        }
+
         switch (module.name()) {
             case "ESP" -> {
-                if (tab == 0) {
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Players", nexora.espPlayers(), "esp-players");
-                    y += 20;
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Mobs", nexora.espMobs(), "esp-mobs");
-                    y += 20;
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Items", nexora.modules().enabled("ItemESP"), "esp-items");
-                    y += 20;
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Crystals", nexora.modules().enabled("CrystalESP"), "esp-crystals");
-                    y += 20;
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Tracers", nexora.modules().enabled("Tracers"), "esp-tracers");
-                    y += 22;
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Range", nexora.espRange());
-                } else {
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Entity Boxes", nexora.entityBoxes(), "esp-boxes");
-                    y += 20;
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Name + Distance", nexora.entityLabels(), "esp-labels");
-                    y += 20;
-                    toggleRow(context, mouseX, mouseY, x, y, w, "Glow Outline", module.enabled(), "esp-glow");
-                }
+                toggleRow(context, mouseX, mouseY, x, y, w, "Item ESP",
+                        nexora.modules().enabled("ItemESP"), "esp-items");
+                y += 20;
+                toggleRow(context, mouseX, mouseY, x, y, w, "Crystal ESP",
+                        nexora.modules().enabled("CrystalESP"), "esp-crystals");
+                y += 20;
+                toggleRow(context, mouseX, mouseY, x, y, w, "Tracers",
+                        nexora.modules().enabled("Tracers"), "esp-tracers");
             }
             case "BaseFinder" -> {
-                if (tab == 0) {
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Scan Range", nexora.baseFinder().scanRange());
-                    y += 22;
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Vertical", nexora.baseFinder().verticalRange());
-                    y += 22;
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Min Cluster", nexora.baseFinder().minClusterSize());
-                    y += 22;
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Radius", nexora.baseFinder().clusterRadius());
-                    y += 22;
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Delay", nexora.baseFinder().updateDelay());
-                } else if (tab == 1) {
+                if (tab == 1) {
                     toggleRow(context, mouseX, mouseY, x, y, w, "Chests", nexora.baseFinder().chests(), "bf-chest");
                     y += 20;
                     toggleRow(context, mouseX, mouseY, x, y, w, "Barrels", nexora.baseFinder().barrels(), "bf-barrel");
@@ -245,13 +230,12 @@ public final class NexoraScreen extends Screen {
                     y += 20;
                     toggleRow(context, mouseX, mouseY, x, y, w, "Through-wall Labels", nexora.worldLabels(), "bf-labels");
                     y += 20;
-                    toggleRow(context, mouseX, mouseY, x, y, w, "StorageESP", nexora.modules().enabled("StorageESP"), "bf-storage");
+                    toggleRow(context, mouseX, mouseY, x, y, w, "StorageESP",
+                            nexora.modules().enabled("StorageESP"), "bf-storage");
                 }
             }
             case "BlockESP" -> {
-                if (tab == 0) {
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Range", nexora.blockEsp().scanRange());
-                } else if (tab == 1) {
+                if (tab == 1) {
                     drawPresetRows(context, mouseX, mouseY, x, y, w, false);
                 } else {
                     toggleRow(context, mouseX, mouseY, x, y, w, "World Boxes", nexora.worldBoxes(), "block-boxes");
@@ -260,11 +244,7 @@ public final class NexoraScreen extends Screen {
                 }
             }
             case "XRay" -> {
-                if (tab == 0) {
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Range", nexora.xray().scanRange());
-                    y += 22;
-                    numericIntRow(context, mouseX, mouseY, x, y, w, "Vertical", nexora.xray().verticalRange());
-                } else if (tab == 1) {
+                if (tab == 1) {
                     drawPresetRows(context, mouseX, mouseY, x, y, w, true);
                 } else {
                     toggleRow(context, mouseX, mouseY, x, y, w, "World Boxes", nexora.worldBoxes(), "xray-boxes");
@@ -272,28 +252,57 @@ public final class NexoraScreen extends Screen {
                     toggleRow(context, mouseX, mouseY, x, y, w, "Through-wall Labels", nexora.worldLabels(), "xray-labels");
                 }
             }
-            case "HUD" -> {
-                toggleRow(context, mouseX, mouseY, x, y, w, "Coordinates", nexora.hudCoordinates(), "hud-coords");
-                y += 20;
-                toggleRow(context, mouseX, mouseY, x, y, w, "Active Modules", nexora.hudActiveModules(), "hud-mods");
-                y += 22;
-                numericIntRow(context, mouseX, mouseY, x, y, w, "GUI Opacity", nexora.guiOpacity());
-            }
-            case "Radar" -> numericIntRow(context, mouseX, mouseY, x, y, w, "Rows", nexora.radarRows());
-            case "Freecam" -> {
-                numericFloatRow(context, mouseX, mouseY, x, y, w, "Camera Speed", nexora.freecam().speed());
-                info(context, x, y + 24, "WASD • Space up • Shift down");
-            }
-            case "Fly" -> numericFloatRow(context, mouseX, mouseY, x, y, w, "Fly Speed", nexora.flySpeed());
-            case "Speed" -> numericFloatRow(context, mouseX, mouseY, x, y, w, "Multiplier", nexora.speedMultiplier());
-            case "HighJump" -> numericFloatRow(context, mouseX, mouseY, x, y, w, "Jump Power", nexora.highJumpPower());
-            case "FastFall" -> numericFloatRow(context, mouseX, mouseY, x, y, w, "Fall Speed", nexora.fastFallSpeed());
-            case "Zoom" -> numericIntRow(context, mouseX, mouseY, x, y, w, "Zoom FOV", nexora.zoomFov());
-            default -> {
-                toggleRow(context, mouseX, mouseY, x, y, w, "Enabled", module.enabled(), "generic-" + module.name());
-                info(context, x, y + 24, module.description());
-            }
+            default -> drawRegistrySettings(context, mouseX, mouseY, module, x, y, w);
         }
+    }
+
+    private void drawRegistrySettings(DrawContext context, int mouseX, int mouseY,
+                                      Module module, int x, int y, int w) {
+        List<ModuleSettings.Setting> settings = nexora.settings().forModule(module.name());
+
+        if (settings.isEmpty()) {
+            info(context, x, y, "No configurable values.");
+            return;
+        }
+
+        for (ModuleSettings.Setting setting : settings) {
+            switch (setting.type()) {
+                case BOOLEAN -> toggleRow(context, mouseX, mouseY, x, y, w,
+                        setting.label(), setting.bool(), module.name() + ":" + setting.id());
+                case NUMBER -> settingNumberRow(context, mouseX, mouseY, x, y, w, setting);
+                case CHOICE -> settingChoiceRow(context, mouseX, mouseY, x, y, w, setting);
+            }
+            y += 20;
+        }
+    }
+
+    private void settingNumberRow(DrawContext context, int mouseX, int mouseY,
+                                  int x, int y, int w, ModuleSettings.Setting setting) {
+        roundedRect(context, x, y, w, 18, 5,
+                inside(mouseX, mouseY, x, y, w, 18) ? ROW_HOVER : ROW);
+
+        context.drawTextWithShadow(textRenderer, setting.label(), x + 5, y + 5, TEXT);
+        drawMiniButton(context, mouseX, mouseY, x + w - 76, y + 2, "−");
+
+        String value = Math.abs(setting.step() - Math.rint(setting.step())) < 0.0001
+                && Math.abs(setting.number() - Math.rint(setting.number())) < 0.0001
+                ? Integer.toString((int)Math.rint(setting.number()))
+                : String.format(Locale.ROOT, "%.2f", setting.number());
+
+        context.drawCenteredTextWithShadow(textRenderer, value, x + w - 43, y + 5, TEXT);
+        drawMiniButton(context, mouseX, mouseY, x + w - 17, y + 2, "+");
+    }
+
+    private void settingChoiceRow(DrawContext context, int mouseX, int mouseY,
+                                  int x, int y, int w, ModuleSettings.Setting setting) {
+        roundedRect(context, x, y, w, 18, 5,
+                inside(mouseX, mouseY, x, y, w, 18) ? ROW_HOVER : ROW);
+
+        context.drawTextWithShadow(textRenderer, setting.label(), x + 5, y + 5, TEXT);
+        drawMiniButton(context, mouseX, mouseY, x + w - 90, y + 2, "‹");
+        context.drawCenteredTextWithShadow(textRenderer, fitText(setting.choice(), 54),
+                x + w - 48, y + 5, PURPLE_LIGHT);
+        drawMiniButton(context, mouseX, mouseY, x + w - 17, y + 2, "›");
     }
 
     private void drawPresetRows(DrawContext context, int mouseX, int mouseY, int x, int y, int w, boolean xray) {
@@ -449,55 +458,20 @@ public final class NexoraScreen extends Screen {
 
     private boolean handleModuleSettingClick(double mx, double my, Module module, int tab,
                                              int x, int y, int w) {
+        if (tab == 0) {
+            return handleRegistrySettingClick(mx, my, module, x, y, w);
+        }
+
         switch (module.name()) {
             case "ESP" -> {
-                if (tab == 0) {
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setEspPlayers(!nexora.espPlayers()))) return true;
-                    y += 20;
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setEspMobs(!nexora.espMobs()))) return true;
-                    y += 20;
-                    if (rowClick(mx, my, x, y, w, () -> toggleModule("ItemESP"))) return true;
-                    y += 20;
-                    if (rowClick(mx, my, x, y, w, () -> toggleModule("CrystalESP"))) return true;
-                    y += 20;
-                    if (rowClick(mx, my, x, y, w, () -> toggleModule("Tracers"))) return true;
-                    y += 22;
-                    return numericClick(mx, my, x, y, w,
-                            () -> nexora.setEspRange(nexora.espRange() - 16),
-                            () -> nexora.setEspRange(nexora.espRange() + 16));
-                } else {
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setEntityBoxes(!nexora.entityBoxes()))) return true;
-                    y += 20;
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setEntityLabels(!nexora.entityLabels()))) return true;
-                    y += 20;
-                    return rowClick(mx, my, x, y, w, () -> {
-                        module.toggle();
-                        nexora.onModuleToggled(module);
-                    });
-                }
+                if (rowClick(mx, my, x, y, w, () -> toggleModule("ItemESP"))) return true;
+                y += 20;
+                if (rowClick(mx, my, x, y, w, () -> toggleModule("CrystalESP"))) return true;
+                y += 20;
+                return rowClick(mx, my, x, y, w, () -> toggleModule("Tracers"));
             }
             case "BaseFinder" -> {
-                if (tab == 0) {
-                    if (numericClick(mx, my, x, y, w,
-                            () -> nexora.baseFinder().setScanRange(nexora.baseFinder().scanRange() - 8),
-                            () -> nexora.baseFinder().setScanRange(nexora.baseFinder().scanRange() + 8))) return true;
-                    y += 22;
-                    if (numericClick(mx, my, x, y, w,
-                            () -> nexora.baseFinder().setVerticalRange(nexora.baseFinder().verticalRange() - 4),
-                            () -> nexora.baseFinder().setVerticalRange(nexora.baseFinder().verticalRange() + 4))) return true;
-                    y += 22;
-                    if (numericClick(mx, my, x, y, w,
-                            () -> nexora.baseFinder().setMinClusterSize(nexora.baseFinder().minClusterSize() - 1),
-                            () -> nexora.baseFinder().setMinClusterSize(nexora.baseFinder().minClusterSize() + 1))) return true;
-                    y += 22;
-                    if (numericClick(mx, my, x, y, w,
-                            () -> nexora.baseFinder().setClusterRadius(nexora.baseFinder().clusterRadius() - 2),
-                            () -> nexora.baseFinder().setClusterRadius(nexora.baseFinder().clusterRadius() + 2))) return true;
-                    y += 22;
-                    return numericClick(mx, my, x, y, w,
-                            () -> nexora.baseFinder().setUpdateDelay(nexora.baseFinder().updateDelay() - 5),
-                            () -> nexora.baseFinder().setUpdateDelay(nexora.baseFinder().updateDelay() + 5));
-                } else if (tab == 1) {
+                if (tab == 1) {
                     if (rowClick(mx, my, x, y, w, () -> nexora.baseFinder().setChests(!nexora.baseFinder().chests()))) return true;
                     y += 20;
                     if (rowClick(mx, my, x, y, w, () -> nexora.baseFinder().setBarrels(!nexora.baseFinder().barrels()))) return true;
@@ -509,95 +483,57 @@ public final class NexoraScreen extends Screen {
                     if (rowClick(mx, my, x, y, w, () -> nexora.baseFinder().setFurnaces(!nexora.baseFinder().furnaces()))) return true;
                     y += 20;
                     return rowClick(mx, my, x, y, w, () -> nexora.baseFinder().setEnderChests(!nexora.baseFinder().enderChests()));
-                } else {
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setWorldBoxes(!nexora.worldBoxes()))) return true;
-                    y += 20;
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setWorldLabels(!nexora.worldLabels()))) return true;
-                    y += 20;
-                    return rowClick(mx, my, x, y, w, () -> toggleModule("StorageESP"));
                 }
+
+                if (rowClick(mx, my, x, y, w, () -> nexora.setWorldBoxes(!nexora.worldBoxes()))) return true;
+                y += 20;
+                if (rowClick(mx, my, x, y, w, () -> nexora.setWorldLabels(!nexora.worldLabels()))) return true;
+                y += 20;
+                return rowClick(mx, my, x, y, w, () -> toggleModule("StorageESP"));
             }
             case "BlockESP" -> {
-                if (tab == 0) {
-                    return numericClick(mx, my, x, y, w,
-                            () -> nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() - 8),
-                            () -> nexora.blockEsp().setScanRange(nexora.blockEsp().scanRange() + 8));
-                } else if (tab == 1) {
-                    return presetClick(mx, my, x, y, w, false);
-                } else {
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setWorldBoxes(!nexora.worldBoxes()))) return true;
-                    y += 20;
-                    return rowClick(mx, my, x, y, w, () -> nexora.setWorldLabels(!nexora.worldLabels()));
-                }
+                if (tab == 1) return presetClick(mx, my, x, y, w, false);
+
+                if (rowClick(mx, my, x, y, w, () -> nexora.setWorldBoxes(!nexora.worldBoxes()))) return true;
+                y += 20;
+                return rowClick(mx, my, x, y, w, () -> nexora.setWorldLabels(!nexora.worldLabels()));
             }
             case "XRay" -> {
-                if (tab == 0) {
-                    if (numericClick(mx, my, x, y, w,
-                            () -> nexora.xray().setScanRange(nexora.xray().scanRange() - 8),
-                            () -> nexora.xray().setScanRange(nexora.xray().scanRange() + 8))) return true;
-                    y += 22;
-                    return numericClick(mx, my, x, y, w,
-                            () -> nexora.xray().setVerticalRange(nexora.xray().verticalRange() - 4),
-                            () -> nexora.xray().setVerticalRange(nexora.xray().verticalRange() + 4));
-                } else if (tab == 1) {
-                    return presetClick(mx, my, x, y, w, true);
-                } else {
-                    if (rowClick(mx, my, x, y, w, () -> nexora.setWorldBoxes(!nexora.worldBoxes()))) return true;
-                    y += 20;
-                    return rowClick(mx, my, x, y, w, () -> nexora.setWorldLabels(!nexora.worldLabels()));
-                }
-            }
-            case "HUD" -> {
-                if (rowClick(mx, my, x, y, w, () -> nexora.setHudCoordinates(!nexora.hudCoordinates()))) return true;
+                if (tab == 1) return presetClick(mx, my, x, y, w, true);
+
+                if (rowClick(mx, my, x, y, w, () -> nexora.setWorldBoxes(!nexora.worldBoxes()))) return true;
                 y += 20;
-                if (rowClick(mx, my, x, y, w, () -> nexora.setHudActiveModules(!nexora.hudActiveModules()))) return true;
-                y += 22;
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.setGuiOpacity(nexora.guiOpacity() - 10),
-                        () -> nexora.setGuiOpacity(nexora.guiOpacity() + 10));
-            }
-            case "Radar" -> {
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.setRadarRows(nexora.radarRows() - 1),
-                        () -> nexora.setRadarRows(nexora.radarRows() + 1));
-            }
-            case "Freecam" -> {
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.freecam().setSpeed(nexora.freecam().speed() - 0.10f),
-                        () -> nexora.freecam().setSpeed(nexora.freecam().speed() + 0.10f));
-            }
-            case "Fly" -> {
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.setFlySpeed(nexora.flySpeed() - 0.05f),
-                        () -> nexora.setFlySpeed(nexora.flySpeed() + 0.05f));
-            }
-            case "Speed" -> {
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.setSpeedMultiplier(nexora.speedMultiplier() - 0.10f),
-                        () -> nexora.setSpeedMultiplier(nexora.speedMultiplier() + 0.10f));
-            }
-            case "HighJump" -> {
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.setHighJumpPower(nexora.highJumpPower() - 0.05f),
-                        () -> nexora.setHighJumpPower(nexora.highJumpPower() + 0.05f));
-            }
-            case "FastFall" -> {
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.setFastFallSpeed(nexora.fastFallSpeed() - 0.05f),
-                        () -> nexora.setFastFallSpeed(nexora.fastFallSpeed() + 0.05f));
-            }
-            case "Zoom" -> {
-                return numericClick(mx, my, x, y, w,
-                        () -> nexora.setZoomFov(nexora.zoomFov() - 5),
-                        () -> nexora.setZoomFov(nexora.zoomFov() + 5));
+                return rowClick(mx, my, x, y, w, () -> nexora.setWorldLabels(!nexora.worldLabels()));
             }
             default -> {
-                return rowClick(mx, my, x, y, w, () -> {
-                    module.toggle();
-                    nexora.onModuleToggled(module);
-                });
+                return handleRegistrySettingClick(mx, my, module, x, y, w);
             }
         }
+    }
+
+    private boolean handleRegistrySettingClick(double mx, double my, Module module,
+                                               int x, int y, int w) {
+        for (ModuleSettings.Setting setting : nexora.settings().forModule(module.name())) {
+            if (inside(mx, my, x, y, w, 18)) {
+                switch (setting.type()) {
+                    case BOOLEAN -> setting.toggle();
+                    case NUMBER -> {
+                        if (inside(mx, my, x + w - 76, y + 2, 16, 15)) setting.adjust(-1);
+                        else if (inside(mx, my, x + w - 17, y + 2, 16, 15)) setting.adjust(1);
+                        else return false;
+                    }
+                    case CHOICE -> {
+                        if (inside(mx, my, x + w - 90, y + 2, 16, 15)) setting.cycle(-1);
+                        else if (inside(mx, my, x + w - 17, y + 2, 16, 15)) setting.cycle(1);
+                        else return false;
+                    }
+                }
+                return true;
+            }
+            y += 20;
+        }
+
+        return false;
     }
 
     private boolean presetClick(double mx, double my, int x, int y, int w, boolean xray) {
@@ -643,21 +579,26 @@ public final class NexoraScreen extends Screen {
 
     private String[] tabsFor(String module) {
         return switch (module) {
-            case "ESP" -> new String[]{"Targets", "Visuals"};
-            case "BaseFinder", "BlockESP", "XRay" -> new String[]{"General", "Blocks", "Visuals"};
-            default -> new String[]{"General"};
+            case "ESP" -> new String[]{"Settings", "Extras"};
+            case "BaseFinder" -> new String[]{"Settings", "Storage", "Visuals"};
+            case "BlockESP", "XRay" -> new String[]{"Settings", "Blocks", "Visuals"};
+            default -> new String[]{"Settings"};
         };
     }
 
     private int settingsHeight(String module) {
         int tab = tabs.getOrDefault(module, 0);
+
+        if (tab == 0) {
+            int rows = Math.max(1, nexora.settings().forModule(module).size());
+            return Math.min(Math.max(105, 52 + rows * 20), Math.max(120, height - 26));
+        }
+
         return switch (module) {
-            case "ESP" -> tab == 0 ? 175 : 125;
-            case "BaseFinder" -> tab == 1 ? 185 : 165;
-            case "BlockESP", "XRay" -> tab == 1 ? 235 : 115;
-            case "HUD" -> 135;
-            case "Freecam" -> 105;
-            default -> 95;
+            case "ESP" -> 120;
+            case "BaseFinder" -> tab == 1 ? 185 : 125;
+            case "BlockESP", "XRay" -> tab == 1 ? 245 : 115;
+            default -> 105;
         };
     }
 
@@ -693,7 +634,7 @@ public final class NexoraScreen extends Screen {
         if (openSettings.isEmpty()) return result;
 
         String module = openSettings.iterator().next();
-        int w = Math.min(300, Math.max(225, width / 3));
+        int w = Math.min(340, Math.max(260, width / 3));
         int h = settingsHeight(module);
         int x = (width - w) / 2;
         int y = Math.max(12, (height - h) / 2);
