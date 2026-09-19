@@ -52,7 +52,12 @@ public final class WorldEspRenderer {
         boolean breadcrumbs = nexora.modules().enabled("Breadcrumbs");
         boolean entityEsp = nexora.modules().enabled("ESP")
                 || nexora.modules().enabled("ItemESP")
-                || nexora.modules().enabled("CrystalESP");
+                || nexora.modules().enabled("CrystalESP")
+                || nexora.modules().enabled("PlayerESP")
+                || nexora.modules().enabled("MobESP")
+                || nexora.modules().enabled("BoxESP")
+                || nexora.modules().enabled("NameTags")
+                || nexora.modules().enabled("GlowESP");
 
         updateBreadcrumbs(client, breadcrumbs);
 
@@ -67,7 +72,7 @@ public final class WorldEspRenderer {
         matrices.push();
         matrices.translate(-camera.x, -camera.y, -camera.z);
 
-        if (entityEsp && nexora.entityBoxes()) {
+        if (entityEsp && (nexora.entityBoxes() || nexora.modules().enabled("BoxESP"))) {
             drawEntityBoxes(client, matrices, lines);
         }
 
@@ -120,7 +125,7 @@ public final class WorldEspRenderer {
 
         matrices.pop();
 
-        if (entityEsp && nexora.entityLabels()) {
+        if (entityEsp && (nexora.entityLabels() || nexora.modules().enabled("NameTags"))) {
             drawEntityLabels(context, client);
         }
 
@@ -288,7 +293,9 @@ public final class WorldEspRenderer {
         if (entity == client.player) return false;
 
         if (entity instanceof PlayerEntity) {
-            return nexora.modules().enabled("ESP") && nexora.espPlayers();
+            return (nexora.modules().enabled("ESP") && nexora.espPlayers())
+                    || nexora.modules().enabled("PlayerESP")
+                    || (nexora.modules().enabled("GlowESP") && nexora.espPlayers());
         }
 
         if (entity instanceof ItemEntity) {
@@ -300,7 +307,9 @@ public final class WorldEspRenderer {
         }
 
         if (entity instanceof LivingEntity) {
-            return nexora.modules().enabled("ESP") && nexora.espMobs();
+            return (nexora.modules().enabled("ESP") && nexora.espMobs())
+                    || nexora.modules().enabled("MobESP")
+                    || (nexora.modules().enabled("GlowESP") && nexora.espMobs());
         }
 
         return false;
