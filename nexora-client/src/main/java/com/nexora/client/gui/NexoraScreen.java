@@ -17,10 +17,10 @@ import java.util.Map;
 import java.util.Set;
 
 public final class NexoraScreen extends Screen {
-    private static final int PANEL = 0xE9121018;
-    private static final int PANEL_2 = 0xEF18151F;
-    private static final int ROW = 0xE51E1A26;
-    private static final int ROW_HOVER = 0xF02A2432;
+    private static final int PANEL = 0xC6121018;
+    private static final int PANEL_2 = 0xD018151F;
+    private static final int ROW = 0xA61E1A26;
+    private static final int ROW_HOVER = 0xC82A2432;
     private static final int PURPLE = 0xFF8B5CF6;
     private static final int PURPLE_LIGHT = 0xFFB89BFF;
     private static final int TEXT = 0xFFF4F1F8;
@@ -114,11 +114,11 @@ public final class NexoraScreen extends Screen {
         int y = 8;
 
         shadow(context, x, y, w, h);
-        context.fill(x, y, x + w, y + h, PANEL);
-        context.fill(x, y, x + 2, y + h, pulsePurple());
+        glassPanel(context, x, y, w, h, PANEL);
+        roundedRect(context, x + 1, y + 5, 2, h - 10, 1, pulsePurple());
 
         context.drawTextWithShadow(textRenderer, "✦ NEXORA", x + 8, y + 8, PURPLE_LIGHT);
-        context.drawTextWithShadow(textRenderer, "V6", x + w - 20, y + 8, MUTED);
+        context.drawTextWithShadow(textRenderer, "V7", x + w - 20, y + 8, MUTED);
 
         int cy = y + 30;
 
@@ -127,7 +127,7 @@ public final class NexoraScreen extends Screen {
             boolean hover = inside(mouseX, mouseY, x + 4, cy - 2, w - 8, 18);
 
             if (hover) {
-                context.fill(x + 4, cy - 2, x + w - 4, cy + 16, 0x55282033);
+                roundedRect(context, x + 4, cy - 2, w - 8, 18, 5, 0x55282033);
             }
 
             context.drawTextWithShadow(textRenderer, open ? "•" : "›", x + 8, cy + 2,
@@ -150,8 +150,8 @@ public final class NexoraScreen extends Screen {
         int h = panel.h;
 
         shadow(context, x, y, w, h);
-        context.fill(x, y, x + w, y + h, PANEL_2);
-        context.fill(x, y, x + w, y + 2, pulsePurple());
+        glassPanel(context, x, y, w, h, PANEL_2);
+        roundedRect(context, x + 7, y + 1, w - 14, 2, 1, pulsePurple());
 
         context.drawTextWithShadow(textRenderer, panel.category, x + 8, y + 8, TEXT);
         context.drawTextWithShadow(textRenderer, "×", x + w - 14, y + 8,
@@ -163,9 +163,9 @@ public final class NexoraScreen extends Screen {
             boolean hover = inside(mouseX, mouseY, x + 5, ry, w - 10, 19);
 
             if (hover) {
-                context.fill(x + 5, ry, x + w - 5, ry + 19, ROW_HOVER);
+                roundedRect(context, x + 5, ry, w - 10, 19, 5, ROW_HOVER);
             } else {
-                context.fill(x + 5, ry, x + w - 5, ry + 19, ROW);
+                roundedRect(context, x + 5, ry, w - 10, 19, 5, ROW);
             }
 
             context.drawTextWithShadow(textRenderer, module.name(), x + 10, ry + 5,
@@ -191,8 +191,8 @@ public final class NexoraScreen extends Screen {
         int h = panel.h;
 
         shadow(context, x, y, w, h);
-        context.fill(x, y, x + w, y + h, PANEL_2);
-        context.fill(x, y, x + w, y + 2, pulsePurple());
+        glassPanel(context, x, y, w, h, PANEL_2);
+        roundedRect(context, x + 7, y + 1, w - 14, 2, 1, pulsePurple());
 
         context.drawTextWithShadow(textRenderer, module.name(), x + 8, y + 8, TEXT);
         drawAnimatedToggle(context, "settings:" + module.name(), x + w - 48, y + 6, module.enabled());
@@ -210,10 +210,10 @@ public final class NexoraScreen extends Screen {
             boolean hover = inside(mouseX, mouseY, tx, ty, tw, 18);
 
             if (active) {
-                context.fill(tx, ty, tx + tw, ty + 18, 0x663C2D59);
-                context.fill(tx, ty + 16, tx + tw, ty + 18, PURPLE);
+                roundedRect(context, tx, ty, tw, 18, 5, 0x663C2D59);
+                roundedRect(context, tx + 4, ty + 16, Math.max(1, tw - 8), 2, 1, PURPLE);
             } else if (hover) {
-                context.fill(tx, ty, tx + tw, ty + 18, 0x442A2334);
+                roundedRect(context, tx, ty, tw, 18, 5, 0x442A2334);
             }
 
             context.drawTextWithShadow(textRenderer, moduleTabs[i], tx + 6, ty + 5,
@@ -323,7 +323,7 @@ public final class NexoraScreen extends Screen {
             boolean active = xray ? nexora.xray().contains(item[0]) : nexora.blockEsp().contains(item[0]);
             boolean hover = inside(mouseX, mouseY, x, y, w, 18);
 
-            context.fill(x, y, x + w, y + 18, hover ? ROW_HOVER : ROW);
+            roundedRect(context, x, y, w, 18, 5, hover ? ROW_HOVER : ROW);
             context.drawTextWithShadow(textRenderer, item[1], x + 5, y + 5, active ? TEXT : MUTED);
             context.drawTextWithShadow(textRenderer, active ? "✓" : "+", x + w - 12, y + 5,
                     active ? GREEN : PURPLE_LIGHT);
@@ -334,14 +334,14 @@ public final class NexoraScreen extends Screen {
     private void toggleRow(DrawContext context, int mouseX, int mouseY,
                            int x, int y, int w, String name, boolean enabled, String key) {
         boolean hover = inside(mouseX, mouseY, x, y, w, 19);
-        context.fill(x, y, x + w, y + 19, hover ? ROW_HOVER : ROW);
+        roundedRect(context, x, y, w, 19, 5, hover ? ROW_HOVER : ROW);
         context.drawTextWithShadow(textRenderer, name, x + 5, y + 5, TEXT);
         drawAnimatedToggle(context, "row:" + key, x + w - 28, y + 3, enabled);
     }
 
     private void numericIntRow(DrawContext context, int mouseX, int mouseY,
                                int x, int y, int w, String name, int value) {
-        context.fill(x, y, x + w, y + 20, ROW);
+        roundedRect(context, x, y, w, 20, 5, ROW);
         context.drawTextWithShadow(textRenderer, name, x + 5, y + 6, TEXT);
         drawMiniButton(context, mouseX, mouseY, x + w - 64, y + 2, "−");
         context.drawCenteredTextWithShadow(textRenderer, Integer.toString(value), x + w - 36, y + 6, TEXT);
@@ -350,7 +350,7 @@ public final class NexoraScreen extends Screen {
 
     private void numericFloatRow(DrawContext context, int mouseX, int mouseY,
                                  int x, int y, int w, String name, float value) {
-        context.fill(x, y, x + w, y + 20, ROW);
+        roundedRect(context, x, y, w, 20, 5, ROW);
         context.drawTextWithShadow(textRenderer, name, x + 5, y + 6, TEXT);
         drawMiniButton(context, mouseX, mouseY, x + w - 64, y + 2, "−");
         context.drawCenteredTextWithShadow(textRenderer,
@@ -360,7 +360,7 @@ public final class NexoraScreen extends Screen {
 
     private void drawMiniButton(DrawContext context, int mouseX, int mouseY, int x, int y, String label) {
         boolean hover = inside(mouseX, mouseY, x, y, 17, 16);
-        context.fill(x, y, x + 17, y + 16, hover ? 0xFF503A72 : 0xFF30283D);
+        roundedRect(context, x, y, 17, 16, 5, hover ? 0xDD503A72 : 0xCC30283D);
         context.drawCenteredTextWithShadow(textRenderer, label, x + 8, y + 4, TEXT);
     }
 
@@ -371,10 +371,10 @@ public final class NexoraScreen extends Screen {
         toggleAnimations.put(key, current);
 
         int track = blend(0xFF3B3543, PURPLE, current);
-        context.fill(x, y, x + 23, y + 12, track);
+        roundedRect(context, x, y, 23, 12, 6, track);
 
         int knobX = x + 2 + Math.round(10 * easeOut(current));
-        context.fill(knobX, y + 2, knobX + 8, y + 10, 0xFFF7F4FA);
+        roundedRect(context, knobX, y + 2, 8, 8, 4, 0xFFF7F4FA);
     }
 
     private void info(DrawContext context, int x, int y, String text) {
@@ -744,7 +744,33 @@ public final class NexoraScreen extends Screen {
     }
 
     private void shadow(DrawContext context, int x, int y, int w, int h) {
-        context.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0x55000000);
+        roundedRect(context, x - 5, y - 4, w + 10, h + 10, 8, 0x22000000);
+        roundedRect(context, x - 3, y - 2, w + 6, h + 6, 7, 0x33000000);
+    }
+
+    private void glassPanel(DrawContext context, int x, int y, int w, int h, int color) {
+        roundedRect(context, x - 1, y - 1, w + 2, h + 2, 7, 0x66473759);
+        roundedRect(context, x, y, w, h, 7, color);
+        roundedRect(context, x + 1, y + 1, w - 2, 1, 1, 0x447D6C91);
+    }
+
+    private void roundedRect(DrawContext context, int x, int y, int w, int h, int radius, int color) {
+        if (w <= 0 || h <= 0) return;
+        int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        if (r <= 1) {
+            context.fill(x, y, x + w, y + h, color);
+            return;
+        }
+
+        for (int row = 0; row < h; row++) {
+            int edge = Math.min(row, h - 1 - row);
+            int inset = 0;
+            if (edge < r) {
+                double dy = r - edge - 0.5;
+                inset = r - (int)Math.floor(Math.sqrt(Math.max(0.0, r * r - dy * dy)));
+            }
+            context.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
+        }
     }
 
     private float approach(float current, float target, float amount) {
