@@ -76,6 +76,16 @@ public final class ModuleSettings {
             numberValue = clamp(round(numberValue + step * direction), min, max);
         }
 
+        public void setNumber(double value) {
+            if (type != Type.NUMBER) return;
+            numberValue = clamp(round(value), min, max);
+        }
+
+        public void setBoolean(boolean value) {
+            if (type != Type.BOOLEAN) return;
+            booleanValue = value;
+        }
+
         public void toggle() {
             if (type == Type.BOOLEAN) booleanValue = !booleanValue;
         }
