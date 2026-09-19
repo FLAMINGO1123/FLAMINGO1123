@@ -19,8 +19,8 @@ public final class BaseFinder {
     private final List<BaseCandidate> candidates = new ArrayList<>();
 
     private int scanRange = 32;
-    private int verticalRange = 20;
-    private int updateDelay = 40;
+    private int verticalRange = 32;
+    private int updateDelay = 20;
     private int minClusterSize = 3;
     private int clusterRadius = 16;
 
@@ -87,7 +87,6 @@ public final class BaseFinder {
         int minY = Math.max(client.world.getBottomY(), center.getY() - verticalRange);
         int maxY = Math.min(client.world.getTopYInclusive(), center.getY() + verticalRange);
 
-        outer:
         for (int x = center.getX() - scanRange; x <= center.getX() + scanRange; x++) {
             for (int z = center.getZ() - scanRange; z <= center.getZ() + scanRange; z++) {
                 for (int y = minY; y <= maxY; y++) {
@@ -96,7 +95,6 @@ public final class BaseFinder {
                     if (type != null) {
                         double distance = Math.sqrt(center.getSquaredDistance(pos));
                         found.add(new StorageHit(pos.toImmutable(), type, distance));
-                        if (found.size() >= 192) break outer;
                     }
                 }
             }
@@ -104,8 +102,9 @@ public final class BaseFinder {
 
         found.sort(Comparator.comparingDouble(StorageHit::distance));
         hits.clear();
-        hits.addAll(found);
-        buildCandidates(center, found);
+        List<StorageHit> nearest = found.subList(0, Math.min(found.size(), 2048));
+        hits.addAll(nearest);
+        buildCandidates(center, nearest);
     }
 
     private void buildCandidates(BlockPos playerPos, List<StorageHit> found) {
