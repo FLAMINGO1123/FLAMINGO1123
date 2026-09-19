@@ -269,6 +269,9 @@ public final class ModuleSettings {
         number("AutoUse","interval","Interval Ticks",1,1,10,1);
         number("AntiAFK","interval","Interval Ticks",100,20,600,20);
         number("AntiAFK","turn","Turn Degrees",3,1,45,1);
+        bool("TestIsolation","combat","Isolate Attack Modules",true);
+        bool("TestIsolation","movement","Isolate Movement Modules",true);
+        bool("TestIsolation","rotation","Isolate Rotation Modules",true);
 
         number("SneakSpam","interval","Interval Ticks",5,1,20,1);
         number("JumpSpam","interval","Interval Ticks",10,1,40,1);
