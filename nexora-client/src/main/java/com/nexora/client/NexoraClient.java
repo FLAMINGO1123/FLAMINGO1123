@@ -3,6 +3,7 @@ package com.nexora.client;
 import com.nexora.client.command.CommandManager;
 import com.nexora.client.core.Module;
 import com.nexora.client.core.ModuleManager;
+import com.nexora.client.core.ModuleSettings;
 import com.nexora.client.feature.BaseFinder;
 import com.nexora.client.feature.BlockEspManager;
 import com.nexora.client.feature.FreecamManager;
@@ -45,6 +46,7 @@ public final class NexoraClient implements ClientModInitializer {
     public static NexoraClient INSTANCE;
 
     private final ModuleManager modules = new ModuleManager();
+    private final ModuleSettings settings = new ModuleSettings();
     private final WaypointManager waypoints = new WaypointManager();
     private final BaseFinder baseFinder = new BaseFinder();
     private final BlockEspManager blockEsp = new BlockEspManager();
@@ -140,8 +142,10 @@ public final class NexoraClient implements ClientModInitializer {
         handlePlayerExtras(client);
         handleUtilityExtras(client);
         handleAntiAfk(client);
+        if (modules.enabled("Freecam")) freecam.setSpeed((float) settings.number("Freecam", "speed", freecam.speed()));
         freecam.tick(client);
 
+        syncManagerSettings();
         blockEsp.tick(client, modules.enabled("BlockESP"));
         xray.tick(client, modules.enabled("XRay"));
         baseFinder.tick(client, modules.enabled("StorageESP"), modules.enabled("BaseFinder"));
@@ -441,7 +445,11 @@ public final class NexoraClient implements ClientModInitializer {
 
         Entity target = hit.getEntity();
         if (target == client.player || !target.isAlive()) return;
-        if (client.player.getAttackCooldownProgress(0.0f) < 0.92f) return;
+        if (target instanceof PlayerEntity && !settings.bool("TriggerBot", "players", true)) return;
+        if (target instanceof LivingEntity && !(target instanceof PlayerEntity) && !settings.bool("TriggerBot", "mobs", true)) return;
+        double triggerRange = settings.number("TriggerBot", "range", 4.5);
+        if (target.squaredDistanceTo(client.player) > triggerRange * triggerRange) return;
+        if (client.player.getAttackCooldownProgress(0.0f) < settings.number("TriggerBot", "cooldown", 0.92)) return;
 
         client.interactionManager.attackEntity(client.player, target);
         client.player.swingHand(Hand.MAIN_HAND);
@@ -455,10 +463,13 @@ public final class NexoraClient implements ClientModInitializer {
 
         if (modules.enabled("AimAssist")) {
             LivingEntity nearest = null;
-            double best = 64.0;
+            double aimRange = settings.number("AimAssist", "range", 8.0);
+            double best = aimRange * aimRange;
 
             for (Entity entity : client.world.getEntities()) {
                 if (!(entity instanceof LivingEntity living) || entity == client.player || !entity.isAlive()) continue;
+                if (entity instanceof PlayerEntity && !settings.bool("AimAssist", "players", true)) continue;
+                if (!(entity instanceof PlayerEntity) && !settings.bool("AimAssist", "mobs", true)) continue;
                 double dist = entity.squaredDistanceTo(client.player);
                 if (dist < best) {
                     best = dist;
@@ -473,17 +484,20 @@ public final class NexoraClient implements ClientModInitializer {
                 double dy = to.y - from.y;
                 double dz = to.z - from.z;
                 double horizontal = Math.sqrt(dx * dx + dz * dz);
-                client.player.setYaw((float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0));
-                client.player.setPitch((float)(-Math.toDegrees(Math.atan2(dy, horizontal))));
+                float targetYaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+                float targetPitch = (float)(-Math.toDegrees(Math.atan2(dy, horizontal)));
+                float strength = (float) settings.number("AimAssist", "strength", 0.35);
+                client.player.setYaw(client.player.getYaw() + wrapDegrees(targetYaw - client.player.getYaw()) * strength);
+                client.player.setPitch(client.player.getPitch() + (targetPitch - client.player.getPitch()) * strength);
             }
         }
 
         if (modules.enabled("AutoClicker")) {
             autoClickTicks++;
-            if (autoClickTicks >= 4 && client.crosshairTarget instanceof EntityHitResult hit) {
+            if (autoClickTicks >= (int) settings.number("AutoClicker", "interval", 4) && client.crosshairTarget instanceof EntityHitResult hit) {
                 Entity target = hit.getEntity();
                 if (target != client.player && target.isAlive()
-                        && client.player.getAttackCooldownProgress(0.0f) >= 0.80f) {
+                        && client.player.getAttackCooldownProgress(0.0f) >= settings.number("AutoClicker", "cooldown", 0.80)) {
                     autoClickTicks = 0;
                     client.interactionManager.attackEntity(client.player, target);
                     client.player.swingHand(Hand.MAIN_HAND);
@@ -496,7 +510,8 @@ public final class NexoraClient implements ClientModInitializer {
         if (modules.enabled("AutoShield")) {
             boolean threat = client.crosshairTarget instanceof EntityHitResult hit
                     && hit.getEntity() instanceof LivingEntity
-                    && hit.getEntity().squaredDistanceTo(client.player) <= 36.0;
+                    && hit.getEntity().squaredDistanceTo(client.player)
+                    <= Math.pow(settings.number("AutoShield", "range", 6.0), 2);
             boolean hasShield = client.player.getOffHandStack().isOf(Items.SHIELD);
             client.options.useKey.setPressed(threat && hasShield);
         }
@@ -504,12 +519,12 @@ public final class NexoraClient implements ClientModInitializer {
         boolean attacking = client.options.attackKey.isPressed();
         if (modules.enabled("CriticalJump") && attacking && !attackWasPressed && client.player.isOnGround()) {
             Vec3d velocity = client.player.getVelocity();
-            client.player.setVelocity(velocity.x, 0.18, velocity.z);
+            client.player.setVelocity(velocity.x, settings.number("CriticalJump", "height", 0.18), velocity.z);
         }
         attackWasPressed = attacking;
 
         if (modules.enabled("AutoSwing")) {
-            if (++autoSwingTicks >= 8) {
+            if (++autoSwingTicks >= (int) settings.number("AutoSwing", "interval", 8)) {
                 autoSwingTicks = 0;
                 client.player.swingHand(Hand.MAIN_HAND);
             }
@@ -520,8 +535,12 @@ public final class NexoraClient implements ClientModInitializer {
 
     private void handleCoreCheats(MinecraftClient client) {
         if (client.currentScreen == null && client.interactionManager != null) {
-            if (modules.enabled("KillAura") && client.player.getAttackCooldownProgress(0.0f) >= 0.92f) {
-                LivingEntity nearest = nearestLivingTarget(client, 4.5);
+            if (modules.enabled("KillAura") && client.player.getAttackCooldownProgress(0.0f)
+                    >= settings.number("KillAura", "cooldown", 0.92)) {
+                LivingEntity nearest = nearestLivingTarget(client,
+                        settings.number("KillAura", "range", 4.5),
+                        settings.bool("KillAura", "players", true),
+                        settings.bool("KillAura", "mobs", true));
                 if (nearest != null) {
                     client.interactionManager.attackEntity(client.player, nearest);
                     client.player.swingHand(Hand.MAIN_HAND);
@@ -531,8 +550,10 @@ public final class NexoraClient implements ClientModInitializer {
             boolean attackPressed = client.options.attackKey.isPressed();
 
             if (modules.enabled("Reach") && attackPressed && !reachWasPressed
-                    && client.player.getAttackCooldownProgress(0.0f) >= 0.80f) {
-                LivingEntity target = targetAlongLook(client, 6.0, 1.35);
+                    && client.player.getAttackCooldownProgress(0.0f) >= settings.number("Reach", "cooldown", 0.80)) {
+                LivingEntity target = targetAlongLook(client,
+                        settings.number("Reach", "range", 6.0),
+                        settings.number("Reach", "radius", 1.35));
                 if (target != null) {
                     client.interactionManager.attackEntity(client.player, target);
                     client.player.swingHand(Hand.MAIN_HAND);
@@ -548,36 +569,42 @@ public final class NexoraClient implements ClientModInitializer {
             int hurt = client.player.hurtTime;
             if (hurt > lastHurtTime) {
                 Vec3d velocity = client.player.getVelocity();
-                client.player.setVelocity(velocity.x * 0.25, velocity.y * 0.35, velocity.z * 0.25);
+                double horizontal = settings.number("Velocity", "horizontal", 25) / 100.0;
+                double vertical = settings.number("Velocity", "vertical", 35) / 100.0;
+                client.player.setVelocity(velocity.x * horizontal, velocity.y * vertical, velocity.z * horizontal);
             }
             lastHurtTime = hurt;
         } else {
             lastHurtTime = client.player.hurtTime;
         }
 
-        if (modules.enabled("NoFall") && client.player.fallDistance > 2.5f) {
+        if (modules.enabled("NoFall") && client.player.fallDistance > settings.number("NoFall", "threshold", 2.5)) {
             client.player.setOnGround(true);
             client.player.fallDistance = 0.0f;
         }
 
         if (modules.enabled("FastPlace") && client.currentScreen == null
-                && client.interactionManager != null && client.options.useKey.isPressed()) {
+                && client.interactionManager != null && client.options.useKey.isPressed()
+                && utilityTicks % Math.max(1, (int) settings.number("FastPlace", "interval", 1)) == 0) {
             client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
         }
 
         if (modules.enabled("FastBreak") && client.currentScreen == null
                 && client.interactionManager != null && client.options.attackKey.isPressed()
+                && utilityTicks % Math.max(1, (int) settings.number("FastBreak", "interval", 1)) == 0
                 && client.crosshairTarget instanceof BlockHitResult hit) {
             client.interactionManager.updateBlockBreakingProgress(hit.getBlockPos(), hit.getSide());
         }
 
-        if (modules.enabled("Nuker") && client.currentScreen == null && client.interactionManager != null) {
+        if (modules.enabled("Nuker") && client.currentScreen == null && client.interactionManager != null
+                && utilityTicks % Math.max(1, (int) settings.number("Nuker", "delay", 1)) == 0) {
             BlockPos center = client.player.getBlockPos();
             boolean attacked = false;
+            int radius = (int) settings.number("Nuker", "radius", 2);
 
-            for (int dy = -1; dy <= 2 && !attacked; dy++) {
-                for (int dx = -2; dx <= 2 && !attacked; dx++) {
-                    for (int dz = -2; dz <= 2; dz++) {
+            for (int dy = -radius; dy <= radius && !attacked; dy++) {
+                for (int dx = -radius; dx <= radius && !attacked; dx++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
                         BlockPos pos = center.add(dx, dy, dz);
                         BlockState state = client.world.getBlockState(pos);
                         if (!state.isAir()) {
@@ -608,12 +635,14 @@ public final class NexoraClient implements ClientModInitializer {
         }
     }
 
-    private LivingEntity nearestLivingTarget(MinecraftClient client, double range) {
+    private LivingEntity nearestLivingTarget(MinecraftClient client, double range, boolean players, boolean mobs) {
         LivingEntity nearest = null;
         double best = range * range;
 
         for (Entity entity : client.world.getEntities()) {
             if (!(entity instanceof LivingEntity living) || entity == client.player || !entity.isAlive()) continue;
+            if (entity instanceof PlayerEntity && !players) continue;
+            if (!(entity instanceof PlayerEntity) && !mobs) continue;
             double distance = entity.squaredDistanceTo(client.player);
             if (distance < best) {
                 best = distance;
@@ -655,29 +684,30 @@ public final class NexoraClient implements ClientModInitializer {
         }
 
         if (modules.enabled("SpinBot")) {
-            client.player.setYaw(client.player.getYaw() + 14.0f);
+            client.player.setYaw(client.player.getYaw() + (float) settings.number("SpinBot", "speed", 14));
         }
 
         if (modules.enabled("PitchLock")) {
-            client.player.setPitch(0.0f);
+            client.player.setPitch((float) settings.number("PitchLock", "pitch", 0));
         }
 
         if (modules.enabled("YawLock")) {
-            float snapped = Math.round(client.player.getYaw() / 45.0f) * 45.0f;
+            float step = (float) settings.number("YawLock", "step", 45);
+            float snapped = Math.round(client.player.getYaw() / step) * step;
             client.player.setYaw(snapped);
         }
 
         if (modules.enabled("AutoDrop")) {
-            if (++autoDropTicks >= 20) {
+            if (++autoDropTicks >= (int) settings.number("AutoDrop", "interval", 20)) {
                 autoDropTicks = 0;
-                client.player.dropSelectedItem(false);
+                client.player.dropSelectedItem(settings.bool("AutoDrop", "fullStack", false));
             }
         } else {
             autoDropTicks = 0;
         }
 
         if (modules.enabled("HandSwing")) {
-            if (++handSwingTicks >= 10) {
+            if (++handSwingTicks >= (int) settings.number("HandSwing", "interval", 10)) {
                 handSwingTicks = 0;
                 client.player.swingHand(Hand.MAIN_HAND);
             }
@@ -695,25 +725,25 @@ public final class NexoraClient implements ClientModInitializer {
         quickTurnTicks++;
 
         if (modules.enabled("SneakSpam") && !modules.enabled("AutoSneak")) {
-            client.options.sneakKey.setPressed((utilityTicks / 5) % 2 == 0);
+            client.options.sneakKey.setPressed((utilityTicks / Math.max(1, (int) settings.number("SneakSpam", "interval", 5))) % 2 == 0);
         }
 
         if (modules.enabled("UseSpam") && !modules.enabled("AutoUse")) {
-            client.options.useKey.setPressed((utilityTicks / 4) % 2 == 0);
+            client.options.useKey.setPressed((utilityTicks / Math.max(1, (int) settings.number("UseSpam", "interval", 4))) % 2 == 0);
         }
 
         if (modules.enabled("MineSpam") && !modules.enabled("AutoMine")) {
-            client.options.attackKey.setPressed((utilityTicks / 4) % 2 == 0);
+            client.options.attackKey.setPressed((utilityTicks / Math.max(1, (int) settings.number("MineSpam", "interval", 4))) % 2 == 0);
         }
 
-        if (modules.enabled("JumpSpam") && client.player.isOnGround() && utilityTicks % 10 == 0) {
+        if (modules.enabled("JumpSpam") && client.player.isOnGround() && utilityTicks % Math.max(1, (int) settings.number("JumpSpam", "interval", 10)) == 0) {
             Vec3d velocity = client.player.getVelocity();
             client.player.setVelocity(velocity.x, 0.42, velocity.z);
         }
 
-        if (modules.enabled("QuickTurn") && quickTurnTicks >= 60) {
+        if (modules.enabled("QuickTurn") && quickTurnTicks >= (int) settings.number("QuickTurn", "interval", 60)) {
             quickTurnTicks = 0;
-            client.player.setYaw(client.player.getYaw() + 180.0f);
+            client.player.setYaw(client.player.getYaw() + (float) settings.number("QuickTurn", "degrees", 180));
         }
 
         if (utilityTicks > 10000) utilityTicks = 0;
@@ -725,9 +755,9 @@ public final class NexoraClient implements ClientModInitializer {
             return;
         }
 
-        if (++antiAfkTicks >= 100) {
+        if (++antiAfkTicks >= (int) settings.number("AntiAFK", "interval", 100)) {
             antiAfkTicks = 0;
-            client.player.setYaw(client.player.getYaw() + 3.0f);
+            client.player.setYaw(client.player.getYaw() + (float) settings.number("AntiAFK", "turn", 3));
         }
     }
 
@@ -752,7 +782,7 @@ public final class NexoraClient implements ClientModInitializer {
 
             context.fill(3, 3, 166, boxH, panel);
             context.fill(3, 3, 166, 5, purple2);
-            context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V9", x, y, purple);
+            context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V10", x, y, purple);
 
             if (hudCoordinates) {
                 context.drawTextWithShadow(client.textRenderer,
@@ -765,7 +795,8 @@ public final class NexoraClient implements ClientModInitializer {
                 for (Module module : modules.all()) {
                     if (!module.enabled()
                             || module.name().equals("HUD")
-                            || module.name().equals("Radar")) continue;
+                            || module.name().equals("Radar")
+                            || !settings.bool(module.name(), "showHud", true)) continue;
 
                     context.drawTextWithShadow(client.textRenderer, module.name(), x, line, purple);
                     line += 11;
@@ -825,6 +856,25 @@ public final class NexoraClient implements ClientModInitializer {
                 ty += 11;
             }
         }
+    }
+
+    private void syncManagerSettings() {
+        blockEsp.setScanRange((int) settings.number("BlockESP", "range", blockEsp.scanRange()));
+        xray.setScanRange((int) settings.number("XRay", "range", xray.scanRange()));
+        xray.setVerticalRange((int) settings.number("XRay", "vertical", xray.verticalRange()));
+
+        baseFinder.setScanRange((int) settings.number("BaseFinder", "range", baseFinder.scanRange()));
+        baseFinder.setVerticalRange((int) settings.number("BaseFinder", "vertical", baseFinder.verticalRange()));
+        baseFinder.setMinClusterSize((int) settings.number("BaseFinder", "minCluster", baseFinder.minClusterSize()));
+        baseFinder.setClusterRadius((int) settings.number("BaseFinder", "clusterRadius", baseFinder.clusterRadius()));
+        baseFinder.setUpdateDelay((int) settings.number("BaseFinder", "delay", baseFinder.updateDelay()));
+    }
+
+    private float wrapDegrees(float degrees) {
+        float value = degrees % 360.0f;
+        if (value >= 180.0f) value -= 360.0f;
+        if (value < -180.0f) value += 360.0f;
+        return value;
     }
 
     private String shortBlockName(String id) {
@@ -901,6 +951,7 @@ public final class NexoraClient implements ClientModInitializer {
     }
 
     public ModuleManager modules() { return modules; }
+    public ModuleSettings settings() { return settings; }
     public WaypointManager waypoints() { return waypoints; }
     public BaseFinder baseFinder() { return baseFinder; }
     public BlockEspManager blockEsp() { return blockEsp; }
@@ -908,9 +959,11 @@ public final class NexoraClient implements ClientModInitializer {
     public FreecamManager freecam() { return freecam; }
     public RelogManager relog() { return relog; }
 
-    public float flySpeed() { return flySpeed; }
+    public float flySpeed() { return (float) settings.number("Fly", "speed", flySpeed); }
     public void setFlySpeed(float value) {
         flySpeed = Math.max(0.05f, Math.min(1.0f, value));
+        ModuleSettings.Setting s = settings.get("Fly", "speed");
+        if (s != null) s.setNumber(flySpeed);
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player != null && modules.enabled("Fly")) {
@@ -918,42 +971,52 @@ public final class NexoraClient implements ClientModInitializer {
         }
     }
 
-    public float speedMultiplier() { return speedMultiplier; }
+    public float speedMultiplier() { return (float) settings.number("Speed", "multiplier", speedMultiplier); }
     public void setSpeedMultiplier(float value) {
         speedMultiplier = Math.max(1.0f, Math.min(3.0f, value));
+        ModuleSettings.Setting s = settings.get("Speed", "multiplier");
+        if (s != null) s.setNumber(speedMultiplier);
     }
 
-    public float highJumpPower() { return highJumpPower; }
+    public float highJumpPower() { return (float) settings.number("HighJump", "power", highJumpPower); }
     public void setHighJumpPower(float value) {
         highJumpPower = Math.max(0.42f, Math.min(1.5f, value));
+        ModuleSettings.Setting s = settings.get("HighJump", "power");
+        if (s != null) s.setNumber(highJumpPower);
     }
 
-    public float fastFallSpeed() { return fastFallSpeed; }
+    public float fastFallSpeed() { return (float) settings.number("FastFall", "speed", fastFallSpeed); }
     public void setFastFallSpeed(float value) {
         fastFallSpeed = Math.max(0.10f, Math.min(1.0f, value));
+        ModuleSettings.Setting s = settings.get("FastFall", "speed");
+        if (s != null) s.setNumber(fastFallSpeed);
     }
 
-    public int zoomFov() { return zoomFov; }
+    public int zoomFov() { return (int) settings.number("Zoom", "fov", zoomFov); }
     public void setZoomFov(int value) {
         zoomFov = Math.max(10, Math.min(70, value));
+        ModuleSettings.Setting s = settings.get("Zoom", "fov");
+        if (s != null) s.setNumber(zoomFov);
     }
 
-    public int espRange() { return espRange; }
+    public int espRange() { return (int) settings.number("ESP", "range", espRange); }
     public void setEspRange(int value) {
         espRange = Math.max(32, Math.min(256, value));
+        ModuleSettings.Setting s = settings.get("ESP", "range");
+        if (s != null) s.setNumber(espRange);
     }
 
-    public boolean espPlayers() { return espPlayers; }
-    public void setEspPlayers(boolean value) { espPlayers = value; }
+    public boolean espPlayers() { return settings.bool("ESP", "players", espPlayers); }
+    public void setEspPlayers(boolean value) { espPlayers = value; ModuleSettings.Setting s = settings.get("ESP", "players"); if (s != null) s.setBoolean(value); }
 
-    public boolean espMobs() { return espMobs; }
-    public void setEspMobs(boolean value) { espMobs = value; }
+    public boolean espMobs() { return settings.bool("ESP", "mobs", espMobs); }
+    public void setEspMobs(boolean value) { espMobs = value; ModuleSettings.Setting s = settings.get("ESP", "mobs"); if (s != null) s.setBoolean(value); }
 
-    public boolean entityBoxes() { return entityBoxes; }
-    public void setEntityBoxes(boolean value) { entityBoxes = value; }
+    public boolean entityBoxes() { return settings.bool("ESP", "boxes", entityBoxes); }
+    public void setEntityBoxes(boolean value) { entityBoxes = value; ModuleSettings.Setting s = settings.get("ESP", "boxes"); if (s != null) s.setBoolean(value); }
 
-    public boolean entityLabels() { return entityLabels; }
-    public void setEntityLabels(boolean value) { entityLabels = value; }
+    public boolean entityLabels() { return settings.bool("ESP", "labels", entityLabels); }
+    public void setEntityLabels(boolean value) { entityLabels = value; ModuleSettings.Setting s = settings.get("ESP", "labels"); if (s != null) s.setBoolean(value); }
 
     public boolean worldLabels() { return worldLabels; }
     public void setWorldLabels(boolean value) { worldLabels = value; }
@@ -961,15 +1024,15 @@ public final class NexoraClient implements ClientModInitializer {
     public boolean worldBoxes() { return worldBoxes; }
     public void setWorldBoxes(boolean value) { worldBoxes = value; }
 
-    public boolean hudCoordinates() { return hudCoordinates; }
-    public void setHudCoordinates(boolean value) { hudCoordinates = value; }
+    public boolean hudCoordinates() { return settings.bool("HUD", "coordinates", hudCoordinates); }
+    public void setHudCoordinates(boolean value) { hudCoordinates = value; ModuleSettings.Setting s = settings.get("HUD", "coordinates"); if (s != null) s.setBoolean(value); }
 
-    public boolean hudActiveModules() { return hudActiveModules; }
-    public void setHudActiveModules(boolean value) { hudActiveModules = value; }
+    public boolean hudActiveModules() { return settings.bool("HUD", "modules", hudActiveModules); }
+    public void setHudActiveModules(boolean value) { hudActiveModules = value; ModuleSettings.Setting s = settings.get("HUD", "modules"); if (s != null) s.setBoolean(value); }
 
-    public int radarRows() { return radarRows; }
-    public void setRadarRows(int value) { radarRows = Math.max(4, Math.min(16, value)); }
+    public int radarRows() { return (int) settings.number("Radar", "rows", radarRows); }
+    public void setRadarRows(int value) { radarRows = Math.max(4, Math.min(16, value)); ModuleSettings.Setting s = settings.get("Radar", "rows"); if (s != null) s.setNumber(radarRows); }
 
-    public int guiOpacity() { return guiOpacity; }
-    public void setGuiOpacity(int value) { guiOpacity = Math.max(90, Math.min(235, value)); }
+    public int guiOpacity() { return (int) settings.number("HUD", "opacity", guiOpacity); }
+    public void setGuiOpacity(int value) { guiOpacity = Math.max(90, Math.min(235, value)); ModuleSettings.Setting s = settings.get("HUD", "opacity"); if (s != null) s.setNumber(guiOpacity); }
 }
