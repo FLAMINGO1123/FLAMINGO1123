@@ -22,10 +22,14 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Locale;
 
 public final class WorldEspRenderer {
     private final NexoraClient nexora;
+    private final Deque<Vec3d> breadcrumbPoints = new ArrayDeque<>();
+    private Vec3d lastBreadcrumb;
 
     public WorldEspRenderer(NexoraClient nexora) {
         this.nexora = nexora;
@@ -45,11 +49,14 @@ public final class WorldEspRenderer {
         boolean waypoints = nexora.modules().enabled("Waypoints");
         boolean tracers = nexora.modules().enabled("Tracers");
         boolean xray = nexora.modules().enabled("XRay");
+        boolean breadcrumbs = nexora.modules().enabled("Breadcrumbs");
         boolean entityEsp = nexora.modules().enabled("ESP")
                 || nexora.modules().enabled("ItemESP")
                 || nexora.modules().enabled("CrystalESP");
 
-        if (!block && !storage && !bases && !waypoints && !tracers && !xray && !entityEsp) return;
+        updateBreadcrumbs(client, breadcrumbs);
+
+        if (!block && !storage && !bases && !waypoints && !tracers && !xray && !entityEsp && !breadcrumbs) return;
 
         MatrixStack matrices = context.matrices();
         if (matrices == null || context.consumers() == null) return;
@@ -105,6 +112,10 @@ public final class WorldEspRenderer {
 
         if (tracers) {
             drawTracers(client, matrices, lines);
+        }
+
+        if (breadcrumbs) {
+            drawBreadcrumbs(matrices, lines);
         }
 
         matrices.pop();
@@ -172,6 +183,41 @@ public final class WorldEspRenderer {
                         waypoint.name() + "  " + (int) distance + "m",
                         0xFFB99CFF);
             }
+        }
+    }
+
+    private void updateBreadcrumbs(MinecraftClient client, boolean enabled) {
+        if (!enabled) {
+            breadcrumbPoints.clear();
+            lastBreadcrumb = null;
+            return;
+        }
+
+        Vec3d pos = new Vec3d(client.player.getX(), client.player.getY() + 0.1, client.player.getZ());
+        if (lastBreadcrumb == null || pos.squaredDistanceTo(lastBreadcrumb) >= 0.20) {
+            breadcrumbPoints.addLast(pos);
+            lastBreadcrumb = pos;
+            while (breadcrumbPoints.size() > 140) breadcrumbPoints.removeFirst();
+        }
+    }
+
+    private void drawBreadcrumbs(MatrixStack matrices, VertexConsumer lines) {
+        Vec3d previous = null;
+        int index = 0;
+        int total = Math.max(1, breadcrumbPoints.size());
+
+        for (Vec3d point : breadcrumbPoints) {
+            if (previous != null) {
+                float t = (float) index / total;
+                line(
+                        matrices, lines,
+                        previous.x, previous.y, previous.z,
+                        point.x, point.y, point.z,
+                        0.45f + t * 0.25f, 0.28f, 1.0f, 0.75f
+                );
+            }
+            previous = point;
+            index++;
         }
     }
 
