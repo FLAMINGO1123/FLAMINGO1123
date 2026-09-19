@@ -17,7 +17,7 @@ public final class XRayManager {
     private final Set<String> tracked = new LinkedHashSet<>();
     private final List<Hit> hits = new ArrayList<>();
     private int scanRange = 32;
-    private int verticalRange = 24;
+    private int verticalRange = 32;
     private int tickCounter;
 
     public XRayManager() {
@@ -68,7 +68,6 @@ public final class XRayManager {
         int maxY = Math.min(client.world.getTopYInclusive(), center.getY() + verticalRange);
         List<Hit> found = new ArrayList<>();
 
-        outer:
         for (int x = center.getX() - scanRange; x <= center.getX() + scanRange; x++) {
             for (int z = center.getZ() - scanRange; z <= center.getZ() + scanRange; z++) {
                 for (int y = minY; y <= maxY; y++) {
@@ -78,7 +77,6 @@ public final class XRayManager {
                     if (tracked.contains(id)) {
                         double distance = Math.sqrt(center.getSquaredDistance(pos));
                         found.add(new Hit(pos.toImmutable(), id, distance));
-                        if (found.size() >= 256) break outer;
                     }
                 }
             }
@@ -86,6 +84,6 @@ public final class XRayManager {
 
         found.sort(Comparator.comparingDouble(Hit::distance));
         hits.clear();
-        hits.addAll(found);
+        hits.addAll(found.subList(0, Math.min(found.size(), 2048)));
     }
 }
