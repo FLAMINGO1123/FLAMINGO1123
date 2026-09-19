@@ -85,7 +85,6 @@ public final class NexoraScreen extends Screen {
         }
 
         if (!openSettings.isEmpty()) {
-            applyBlur(context);
             renderDarkening(context);
         }
 
