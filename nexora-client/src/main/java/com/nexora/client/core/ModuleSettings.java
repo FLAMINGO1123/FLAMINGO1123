@@ -95,6 +95,17 @@ public final class ModuleSettings {
             choiceIndex = Math.floorMod(choiceIndex + direction, choices.length);
         }
 
+        public boolean setChoice(String value) {
+            if (type != Type.CHOICE || choices.length == 0) return false;
+            for (int i = 0; i < choices.length; i++) {
+                if (choices[i].equalsIgnoreCase(value)) {
+                    choiceIndex = i;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private static double round(double value) {
             return Math.round(value * 1000.0) / 1000.0;
         }
