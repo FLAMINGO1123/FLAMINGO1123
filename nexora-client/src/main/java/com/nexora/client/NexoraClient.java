@@ -26,7 +26,9 @@ import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
@@ -66,6 +68,7 @@ public final class NexoraClient implements ClientModInitializer {
     private Double rememberedGamma;
     private Integer rememberedFov;
     private boolean jumpWasPressed;
+    private int antiAfkTicks;
 
     @Override
     public void onInitializeClient() {
@@ -102,12 +105,14 @@ public final class NexoraClient implements ClientModInitializer {
 
         handleFlight(client);
         handleSprint(client);
-        handleAutoWalk(client);
+        handleHeldKeys(client);
         handleSpeed(client);
         handleJumpModules(client);
         handleFullbright(client);
         handleZoom(client);
         handleEsp(client);
+        handleTriggerBot(client);
+        handleAntiAfk(client);
         freecam.tick(client);
 
         blockEsp.tick(client, modules.enabled("BlockESP"));
@@ -141,10 +146,11 @@ public final class NexoraClient implements ClientModInitializer {
         }
     }
 
-    private void handleAutoWalk(MinecraftClient client) {
-        if (modules.enabled("AutoWalk")) {
-            client.options.forwardKey.setPressed(true);
-        }
+    private void handleHeldKeys(MinecraftClient client) {
+        if (modules.enabled("AutoWalk")) client.options.forwardKey.setPressed(true);
+        if (modules.enabled("AutoSneak")) client.options.sneakKey.setPressed(true);
+        if (modules.enabled("AutoMine")) client.options.attackKey.setPressed(true);
+        if (modules.enabled("AutoUse")) client.options.useKey.setPressed(true);
     }
 
     private void handleSpeed(MinecraftClient client) {
@@ -176,13 +182,24 @@ public final class NexoraClient implements ClientModInitializer {
     private void handleJumpModules(MinecraftClient client) {
         boolean pressed = client.options.jumpKey.isPressed();
 
-        if (pressed && !jumpWasPressed && !modules.enabled("Freecam")) {
-            Vec3d velocity = client.player.getVelocity();
-
-            if (modules.enabled("HighJump") && client.player.isOnGround()) {
-                client.player.setVelocity(velocity.x, highJumpPower, velocity.z);
-            } else if (modules.enabled("AirJump") && !client.player.isOnGround()) {
+        if (!modules.enabled("Freecam")) {
+            if (modules.enabled("BunnyHop") && client.player.isOnGround()
+                    && (client.options.forwardKey.isPressed()
+                    || client.options.backKey.isPressed()
+                    || client.options.leftKey.isPressed()
+                    || client.options.rightKey.isPressed())) {
+                Vec3d velocity = client.player.getVelocity();
                 client.player.setVelocity(velocity.x, 0.42, velocity.z);
+            }
+
+            if (pressed && !jumpWasPressed) {
+                Vec3d velocity = client.player.getVelocity();
+
+                if (modules.enabled("HighJump") && client.player.isOnGround()) {
+                    client.player.setVelocity(velocity.x, highJumpPower, velocity.z);
+                } else if (modules.enabled("AirJump") && !client.player.isOnGround()) {
+                    client.player.setVelocity(velocity.x, 0.42, velocity.z);
+                }
             }
         }
 
@@ -250,6 +267,30 @@ public final class NexoraClient implements ClientModInitializer {
         }
     }
 
+    private void handleTriggerBot(MinecraftClient client) {
+        if (!modules.enabled("TriggerBot") || client.currentScreen != null || client.interactionManager == null) return;
+        if (!(client.crosshairTarget instanceof EntityHitResult hit)) return;
+
+        Entity target = hit.getEntity();
+        if (target == client.player || !target.isAlive()) return;
+        if (client.player.getAttackCooldownProgress(0.0f) < 0.92f) return;
+
+        client.interactionManager.attackEntity(client.player, target);
+        client.player.swingHand(Hand.MAIN_HAND);
+    }
+
+    private void handleAntiAfk(MinecraftClient client) {
+        if (!modules.enabled("AntiAFK")) {
+            antiAfkTicks = 0;
+            return;
+        }
+
+        if (++antiAfkTicks >= 100) {
+            antiAfkTicks = 0;
+            client.player.setYaw(client.player.getYaw() + 3.0f);
+        }
+    }
+
     private void renderHud(DrawContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || !modules.enabled("HUD")) return;
@@ -258,14 +299,14 @@ public final class NexoraClient implements ClientModInitializer {
         final int purple2 = 0xFF8B5CF6;
         final int white = 0xFFF4F1FA;
         final int muted = 0xFFA9A3B5;
-        final int panel = 0xB5100E16;
+        final int panel = 0xA0100E16;
 
         int x = 7;
         int y = 7;
 
         context.fill(3, 3, 166, 34, panel);
         context.fill(3, 3, 166, 5, purple2);
-        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V6", x, y, purple);
+        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V7", x, y, purple);
         context.drawTextWithShadow(client.textRenderer,
                 "XYZ " + client.player.getBlockX() + " " + client.player.getBlockY() + " " + client.player.getBlockZ(),
                 x, y + 13, white);
@@ -362,6 +403,18 @@ public final class NexoraClient implements ClientModInitializer {
 
         if (module.name().equalsIgnoreCase("AutoWalk") && !module.enabled()) {
             client.options.forwardKey.setPressed(false);
+        }
+
+        if (module.name().equalsIgnoreCase("AutoSneak") && !module.enabled()) {
+            client.options.sneakKey.setPressed(false);
+        }
+
+        if (module.name().equalsIgnoreCase("AutoMine") && !module.enabled()) {
+            client.options.attackKey.setPressed(false);
+        }
+
+        if (module.name().equalsIgnoreCase("AutoUse") && !module.enabled()) {
+            client.options.useKey.setPressed(false);
         }
 
         if (module.name().equalsIgnoreCase("Fullbright") && !module.enabled()) {
