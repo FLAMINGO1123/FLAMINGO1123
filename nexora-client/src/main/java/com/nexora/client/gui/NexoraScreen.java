@@ -197,6 +197,12 @@ public final class NexoraScreen extends Screen {
             case "BaseFinder" -> drawBaseFinderTab(context, mouseX, mouseY, x, y, w);
             case "ESP" -> drawEspTab(context, mouseX, mouseY, x, y, w);
             case "BlockESP" -> drawBlockEspTab(context, mouseX, mouseY, x, y, w);
+            case "XRay" -> drawXRayTab(context, mouseX, mouseY, x, y, w);
+            case "Freecam" -> {
+                numericFloatRow(context, mouseX, mouseY, x, y, w, "Freecam Speed", nexora.freecam().speed());
+                info(context, x, y + 27, "WASD move • Space up • Shift down");
+                info(context, x, y + 39, "Sprint key = 2x camera speed");
+            }
             case "Fly" -> {
                 numericFloatRow(context, mouseX, mouseY, x, y, w, "Fly Speed", nexora.flySpeed());
                 info(context, x, y + 27, "Use + / − or .flyspeed");
@@ -295,6 +301,45 @@ public final class NexoraScreen extends Screen {
             toggleRow(context, mouseX, mouseY, x, y, w, "World Boxes", nexora.worldBoxes(), "block-boxes");
             y += 22;
             toggleRow(context, mouseX, mouseY, x, y, w, "Through-wall Labels", nexora.worldLabels(), "block-labels");
+        }
+    }
+
+    private void drawXRayTab(DrawContext context, int mouseX, int mouseY, int x, int y, int w) {
+        if (selectedTab == 0) {
+            toggleRow(context, mouseX, mouseY, x, y, w, "XRay", selected.enabled(), "xray-main");
+            y += 24;
+            numericIntRow(context, mouseX, mouseY, x, y, w, "Scan Range", nexora.xray().scanRange());
+            y += 24;
+            numericIntRow(context, mouseX, mouseY, x, y, w, "Vertical Range", nexora.xray().verticalRange());
+            y += 24;
+            info(context, x, y, "Green boxes mark ores through terrain.");
+        } else if (selectedTab == 1) {
+            String[][] ores = {
+                    {"minecraft:diamond_ore", "Diamond Ore"},
+                    {"minecraft:deepslate_diamond_ore", "Deep Diamond"},
+                    {"minecraft:ancient_debris", "Ancient Debris"},
+                    {"minecraft:emerald_ore", "Emerald Ore"},
+                    {"minecraft:deepslate_emerald_ore", "Deep Emerald"},
+                    {"minecraft:gold_ore", "Gold Ore"},
+                    {"minecraft:deepslate_gold_ore", "Deep Gold"},
+                    {"minecraft:iron_ore", "Iron Ore"}
+            };
+            int rowH = 19;
+            for (String[] ore : ores) {
+                boolean active = nexora.xray().contains(ore[0]);
+                boolean hover = inside(mouseX, mouseY, x, y, w, rowH - 1);
+                context.fill(x, y, x + w, y + rowH - 1, hover ? ROW_HOVER : ROW);
+                context.drawTextWithShadow(textRenderer, ore[1], x + 6, y + 5, active ? TEXT : MUTED);
+                context.drawTextWithShadow(textRenderer, active ? "✓" : "+", x + w - 14, y + 5,
+                        active ? GREEN : PURPLE_LIGHT);
+                y += rowH;
+            }
+        } else {
+            toggleRow(context, mouseX, mouseY, x, y, w, "World Boxes", nexora.worldBoxes(), "xray-boxes");
+            y += 22;
+            toggleRow(context, mouseX, mouseY, x, y, w, "Through-wall Labels", nexora.worldLabels(), "xray-labels");
+            y += 22;
+            toggleRow(context, mouseX, mouseY, x, y, w, "HUD Radar", nexora.modules().enabled("HUD"), "xray-hud");
         }
     }
 
@@ -527,6 +572,47 @@ public final class NexoraScreen extends Screen {
                 return numericClick(mx, my, x, y, w, () -> nexora.setSpeedMultiplier(nexora.speedMultiplier() - 0.10f),
                         () -> nexora.setSpeedMultiplier(nexora.speedMultiplier() + 0.10f));
             }
+            case "Freecam" -> {
+                return numericClick(mx, my, x, y, w, () -> nexora.freecam().setSpeed(nexora.freecam().speed() - 0.10f),
+                        () -> nexora.freecam().setSpeed(nexora.freecam().speed() + 0.10f));
+            }
+            case "XRay" -> {
+                if (selectedTab == 0) {
+                    if (rowClick(mx, my, x, y, w, () -> toggleModule("XRay"))) return true;
+                    y += 24;
+                    if (numericClick(mx, my, x, y, w, () -> nexora.xray().setScanRange(nexora.xray().scanRange() - 8),
+                            () -> nexora.xray().setScanRange(nexora.xray().scanRange() + 8))) return true;
+                    y += 24;
+                    return numericClick(mx, my, x, y, w, () -> nexora.xray().setVerticalRange(nexora.xray().verticalRange() - 4),
+                            () -> nexora.xray().setVerticalRange(nexora.xray().verticalRange() + 4));
+                } else if (selectedTab == 1) {
+                    String[] ores = {
+                            "minecraft:diamond_ore",
+                            "minecraft:deepslate_diamond_ore",
+                            "minecraft:ancient_debris",
+                            "minecraft:emerald_ore",
+                            "minecraft:deepslate_emerald_ore",
+                            "minecraft:gold_ore",
+                            "minecraft:deepslate_gold_ore",
+                            "minecraft:iron_ore"
+                    };
+                    int rowH = 19;
+                    for (String ore : ores) {
+                        if (inside(mx, my, x, y, w, rowH - 1)) {
+                            nexora.xray().toggle(ore);
+                            return true;
+                        }
+                        y += rowH;
+                    }
+                    return false;
+                } else {
+                    if (rowClick(mx, my, x, y, w, () -> nexora.setWorldBoxes(!nexora.worldBoxes()))) return true;
+                    y += 22;
+                    if (rowClick(mx, my, x, y, w, () -> nexora.setWorldLabels(!nexora.worldLabels()))) return true;
+                    y += 22;
+                    return rowClick(mx, my, x, y, w, () -> toggleModule("HUD"));
+                }
+            }
             default -> {
                 return rowClick(mx, my, x, y, w, () -> {
                     selected.toggle();
@@ -578,7 +664,7 @@ public final class NexoraScreen extends Screen {
 
     private String[] tabsForSelected() {
         return switch (selected.name()) {
-            case "BaseFinder", "ESP", "BlockESP" -> new String[]{"General", "Blocks", "Visuals"};
+            case "BaseFinder", "ESP", "BlockESP", "XRay" -> new String[]{"General", "Blocks", "Visuals"};
             default -> new String[]{"General"};
         };
     }
@@ -589,6 +675,8 @@ public final class NexoraScreen extends Screen {
             case "BaseFinder" -> selectedTab == 1 ? 205 : 190;
             case "ESP" -> selectedTab == 1 ? 245 : 205;
             case "BlockESP" -> selectedTab == 1 ? 245 : 145;
+            case "XRay" -> selectedTab == 1 ? 230 : 160;
+            case "Freecam" -> 145;
             default -> 125;
         };
     }
