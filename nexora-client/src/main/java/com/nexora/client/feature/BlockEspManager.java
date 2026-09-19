@@ -101,13 +101,12 @@ public final class BlockEspManager {
     private void scan(MinecraftClient client) {
         BlockPos center = client.player.getBlockPos();
         int horizontal = scanRange;
-        int vertical = Math.min(32, Math.max(12, scanRange / 2));
+        int vertical = Math.min(64, Math.max(24, scanRange));
 
         List<BlockHit> found = new ArrayList<>();
         int minY = Math.max(client.world.getBottomY(), center.getY() - vertical);
         int maxY = Math.min(client.world.getTopYInclusive(), center.getY() + vertical);
 
-        outer:
         for (int x = center.getX() - horizontal; x <= center.getX() + horizontal; x++) {
             for (int z = center.getZ() - horizontal; z <= center.getZ() + horizontal; z++) {
                 for (int y = minY; y <= maxY; y++) {
@@ -117,7 +116,6 @@ public final class BlockEspManager {
                     if (tracked.contains(id)) {
                         double distance = Math.sqrt(center.getSquaredDistance(pos));
                         found.add(new BlockHit(pos.toImmutable(), id, distance));
-                        if (found.size() >= 256) break outer;
                     }
                 }
             }
@@ -125,7 +123,7 @@ public final class BlockEspManager {
 
         found.sort(Comparator.comparingDouble(BlockHit::distance));
         hits.clear();
-        hits.addAll(found);
+        hits.addAll(found.subList(0, Math.min(found.size(), 2048)));
     }
 
     private String normalize(String id) {
