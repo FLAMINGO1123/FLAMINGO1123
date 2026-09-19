@@ -53,7 +53,7 @@ public final class WorldEspRenderer {
         matrices.push();
         matrices.translate(-camera.x, -camera.y, -camera.z);
 
-        if (block) {
+        if (block && nexora.worldBoxes()) {
             int shown = 0;
             for (BlockEspManager.BlockHit hit : nexora.blockEsp().hits()) {
                 if (shown++ >= 96) break;
@@ -61,7 +61,7 @@ public final class WorldEspRenderer {
             }
         }
 
-        if (storage) {
+        if (storage && nexora.worldBoxes()) {
             int shown = 0;
             for (BaseFinder.StorageHit hit : nexora.baseFinder().hits()) {
                 if (shown++ >= 80) break;
@@ -69,7 +69,7 @@ public final class WorldEspRenderer {
             }
         }
 
-        if (bases) {
+        if (bases && nexora.worldBoxes()) {
             int shown = 0;
             for (BaseFinder.BaseCandidate candidate : nexora.baseFinder().candidates()) {
                 if (shown++ >= 12) break;
@@ -93,7 +93,7 @@ public final class WorldEspRenderer {
         // Floating SEE_THROUGH text renders with Minecraft's no-depth text layer.
         // This keeps target names/distances readable even when blocks are between
         // the camera and the target.
-        if (bases) {
+        if (bases && nexora.worldLabels()) {
             int shown = 0;
             for (BaseFinder.BaseCandidate candidate : nexora.baseFinder().candidates()) {
                 if (shown++ >= 8) break;
@@ -105,7 +105,7 @@ public final class WorldEspRenderer {
             }
         }
 
-        if (storage) {
+        if (storage && nexora.worldLabels()) {
             int shown = 0;
             for (BaseFinder.StorageHit hit : nexora.baseFinder().hits()) {
                 if (shown++ >= 14) break;
@@ -117,7 +117,7 @@ public final class WorldEspRenderer {
             }
         }
 
-        if (block) {
+        if (block && nexora.worldLabels()) {
             int shown = 0;
             for (BlockEspManager.BlockHit hit : nexora.blockEsp().hits()) {
                 if (shown++ >= 18) break;
@@ -129,7 +129,7 @@ public final class WorldEspRenderer {
             }
         }
 
-        if (waypoints) {
+        if (waypoints && nexora.worldLabels()) {
             int shown = 0;
             for (WaypointManager.Waypoint waypoint : nexora.waypoints().all()) {
                 if (shown++ >= 12) break;
