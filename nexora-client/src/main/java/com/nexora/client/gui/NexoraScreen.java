@@ -28,7 +28,7 @@ public final class NexoraScreen extends Screen {
     private static final int GREEN = 0xFF65E6A5;
 
     private static final String[] CATEGORIES = {
-            "Combat", "Movement", "Render", "World", "Misc", "DonutSMP"
+            "Combat", "Movement", "Player", "Render", "World", "Misc", "Utility", "DonutSMP"
     };
 
     private static final String[][] BLOCK_PRESETS = {
