@@ -2,6 +2,7 @@ package com.nexora.client.command;
 
 import com.nexora.client.NexoraClient;
 import com.nexora.client.core.Module;
+import com.nexora.client.core.ModuleSettings;
 import com.nexora.client.gui.NexoraScreen;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
@@ -39,6 +40,8 @@ public final class CommandManager {
             case "on" -> setModule(client, args, true);
             case "off" -> setModule(client, args, false);
             case "panic" -> panic(client);
+            case "settings" -> settings(client, args);
+            case "set" -> setSetting(client, args);
 
             case "esp" -> simpleModule(client, "ESP", args);
             case "xray" -> simpleModule(client, "XRay", args);
@@ -74,8 +77,9 @@ public final class CommandManager {
     }
 
     private void help(MinecraftClient client) {
-        chat(client, "§d§lNexora V9 §7commands");
+        chat(client, "§d§lNexora V10 §7commands");
         chat(client, "§f.gui §8| §f.modules §8| §f.panic");
+        chat(client, "§f.settings <module> §8| §f.set <module> <setting> <value>");
         chat(client, "§7Any module: §f.on <name> §8| §f.off <name> §8| §f.toggle <name>");
         chat(client, "§f.toggle <module> §8| §f.on <module> §8| §f.off <module>");
         chat(client, "§f.esp on/off §8| §f.xray on/off §8| §f.freecam on/off");
@@ -165,6 +169,77 @@ public final class CommandManager {
             nexora.onModuleToggled(module);
         }
         chat(client, "§cAll Nexora modules disabled.");
+    }
+
+    private void settings(MinecraftClient client, String[] args) {
+        if (args.length < 2) {
+            chat(client, "§cUsage: .settings <module>");
+            return;
+        }
+
+        Module module = nexora.modules().get(args[1]);
+        if (module == null) {
+            chat(client, "§cModule not found.");
+            return;
+        }
+
+        chat(client, "§d§l" + module.name() + " §7settings");
+        for (ModuleSettings.Setting setting : nexora.settings().forModule(module.name())) {
+            String value = switch (setting.type()) {
+                case BOOLEAN -> setting.bool() ? "ON" : "OFF";
+                case CHOICE -> setting.choice();
+                case NUMBER -> Math.abs(setting.number() - Math.rint(setting.number())) < 0.0001
+                        ? Integer.toString((int)Math.rint(setting.number()))
+                        : String.format(Locale.ROOT, "%.2f", setting.number());
+            };
+            chat(client, "§7" + setting.id() + " §8= §f" + value);
+        }
+    }
+
+    private void setSetting(MinecraftClient client, String[] args) {
+        if (args.length < 4) {
+            chat(client, "§cUsage: .set <module> <setting> <value>");
+            return;
+        }
+
+        Module module = nexora.modules().get(args[1]);
+        if (module == null) {
+            chat(client, "§cModule not found.");
+            return;
+        }
+
+        ModuleSettings.Setting setting = nexora.settings().get(module.name(), args[2]);
+        if (setting == null) {
+            chat(client, "§cSetting not found. Use .settings " + module.name());
+            return;
+        }
+
+        String value = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+
+        try {
+            switch (setting.type()) {
+                case BOOLEAN -> {
+                    Boolean parsed = parseOnOff(value);
+                    if (parsed == null) {
+                        chat(client, "§cBoolean values: on/off");
+                        return;
+                    }
+                    setting.setBoolean(parsed);
+                }
+                case NUMBER -> setting.setNumber(Double.parseDouble(value));
+                case CHOICE -> {
+                    if (!setting.setChoice(value)) {
+                        chat(client, "§cInvalid choice.");
+                        return;
+                    }
+                }
+            }
+        } catch (NumberFormatException e) {
+            chat(client, "§cThat value must be a number.");
+            return;
+        }
+
+        chat(client, "§a" + module.name() + " §7" + setting.id() + " updated.");
     }
 
     private void flySpeed(MinecraftClient client, String[] args) {
