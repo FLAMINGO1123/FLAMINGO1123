@@ -10,12 +10,15 @@ public final class ModuleManager {
     private final Map<String, Module> modules = new LinkedHashMap<>();
 
     public ModuleManager() {
+        add(new Module("TriggerBot", "Combat", "Attacks the entity under your crosshair when the attack cooldown is ready.", false));
         add(new Module("CrystalESP", "Combat", "Highlights nearby end crystals.", false));
 
         add(new Module("Fly", "Movement", "Client flight with adjustable speed.", false));
         add(new Module("Sprint", "Movement", "Automatically sprints while moving forward.", false));
         add(new Module("AutoWalk", "Movement", "Keeps forward movement held.", false));
+        add(new Module("AutoSneak", "Movement", "Keeps sneak held until disabled.", false));
         add(new Module("Speed", "Movement", "Adjustable client movement speed.", false));
+        add(new Module("BunnyHop", "Movement", "Automatically jumps while moving on the ground.", false));
         add(new Module("Freecam", "Movement", "Detaches the camera while your player stays anchored.", false));
         add(new Module("HighJump", "Movement", "Higher ground jumps with adjustable power.", false));
         add(new Module("AirJump", "Movement", "Allows a jump impulse while airborne.", false));
@@ -23,6 +26,7 @@ public final class ModuleManager {
         add(new Module("ESP", "Render", "Entity boxes, labels and glow through terrain.", false));
         add(new Module("ItemESP", "Render", "Highlights dropped items.", false));
         add(new Module("Tracers", "Render", "Draws lines toward enabled ESP targets.", false));
+        add(new Module("Breadcrumbs", "Render", "Draws a trail behind your recent movement.", false));
         add(new Module("Fullbright", "Render", "Forces maximum vanilla gamma.", false));
         add(new Module("XRay", "Render", "Highlights selected ores in client-loaded terrain.", false));
         add(new Module("Zoom", "Render", "Adjustable client FOV zoom.", false));
@@ -30,6 +34,9 @@ public final class ModuleManager {
         add(new Module("Waypoints", "World", "Shows saved waypoint markers and distances.", false));
 
         add(new Module("HUD", "Misc", "Compact Nexora HUD and radar.", true));
+        add(new Module("AutoMine", "Misc", "Keeps the attack/mine key held.", false));
+        add(new Module("AutoUse", "Misc", "Keeps the use-item key held.", false));
+        add(new Module("AntiAFK", "Misc", "Adds small periodic camera movement while idle.", false));
 
         add(new Module("BaseFinder", "DonutSMP", "Scores loaded storage clusters as possible bases.", false));
         add(new Module("StorageESP", "DonutSMP", "Finds loaded chests, barrels, hoppers and shulkers.", false));
