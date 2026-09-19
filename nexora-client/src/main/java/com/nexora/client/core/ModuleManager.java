@@ -16,11 +16,13 @@ public final class ModuleManager {
         add(new Module("Sprint", "Movement", "Automatically sprints while moving forward.", false));
         add(new Module("AutoWalk", "Movement", "Keeps forward movement held for you.", false));
         add(new Module("Speed", "Movement", "Adjustable client movement speed.", false));
+        add(new Module("Freecam", "Movement", "Detaches the camera while keeping your player anchored.", false));
 
         add(new Module("ESP", "Render", "Through-wall entity ESP. Right-click for targets and block picker.", false));
         add(new Module("ItemESP", "Render", "Highlights dropped items through walls.", false));
         add(new Module("Tracers", "Render", "Draws lines toward nearby ESP targets.", false));
         add(new Module("Fullbright", "Render", "Forces maximum vanilla gamma.", false));
+        add(new Module("XRay", "Render", "Highlights selected ores through terrain using client-loaded blocks.", false));
 
         add(new Module("BaseFinder", "DonutSMP", "Scores loaded storage clusters as possible bases.", false));
         add(new Module("StorageESP", "DonutSMP", "Finds loaded chests, barrels, hoppers and shulkers.", false));
