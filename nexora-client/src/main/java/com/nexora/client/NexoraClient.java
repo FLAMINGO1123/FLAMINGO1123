@@ -49,6 +49,8 @@ public final class NexoraClient implements ClientModInitializer {
     private boolean espPlayers = true;
     private boolean espMobs = true;
     private int espRange = 160;
+    private boolean worldLabels = true;
+    private boolean worldBoxes = true;
 
     private boolean rememberedAllowFlying;
     private boolean flyStateCaptured;
@@ -207,7 +209,7 @@ public final class NexoraClient implements ClientModInitializer {
         int y = 7;
         context.fill(3, 3, 170, 34, panel);
         context.fill(3, 3, 170, 5, purple2);
-        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V3", x, y, purple);
+        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V4", x, y, purple);
         context.drawTextWithShadow(client.textRenderer,
                 "XYZ " + client.player.getBlockX() + " " + client.player.getBlockY() + " " + client.player.getBlockZ(),
                 x, y + 13, white);
@@ -323,4 +325,10 @@ public final class NexoraClient implements ClientModInitializer {
 
     public boolean espMobs() { return espMobs; }
     public void setEspMobs(boolean value) { espMobs = value; }
+
+    public boolean worldLabels() { return worldLabels; }
+    public void setWorldLabels(boolean value) { worldLabels = value; }
+
+    public boolean worldBoxes() { return worldBoxes; }
+    public void setWorldBoxes(boolean value) { worldBoxes = value; }
 }
