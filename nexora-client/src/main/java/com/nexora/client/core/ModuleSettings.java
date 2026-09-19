@@ -189,7 +189,7 @@ public final class ModuleSettings {
         number("KillAura","cooldown","Cooldown",0.92,0.10,1.0,0.05);
         bool("KillAura","players","Players",true);
         bool("KillAura","mobs","Mobs",true);
-        number("Reach","range","Reach",6.0,3.0,8.0,0.25);
+        number("Reach","range","Reach",3.0,3.0,8.0,0.25);
         number("Reach","radius","Aim Radius",1.35,0.25,2.5,0.10);
         number("Reach","cooldown","Cooldown",0.80,0.10,1.0,0.05);
         number("Velocity","horizontal","Horizontal %",25,0,100,5);
