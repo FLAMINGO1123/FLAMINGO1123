@@ -20,7 +20,7 @@ public final class FreecamManager {
     public void enable(MinecraftClient client) {
         if (client.player == null) return;
         active = true;
-        anchorPos = client.player.getPos();
+        anchorPos = new Vec3d(client.player.getX(), client.player.getY(), client.player.getZ());
         cameraPos = client.player.getEyePos();
     }
 
