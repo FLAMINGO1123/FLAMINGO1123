@@ -20,16 +20,21 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
@@ -76,6 +81,8 @@ public final class NexoraClient implements ClientModInitializer {
     private Integer rememberedFov;
     private boolean jumpWasPressed;
     private boolean attackWasPressed;
+    private boolean reachWasPressed;
+    private int lastHurtTime;
     private int antiAfkTicks;
     private int autoClickTicks;
     private int autoSwingTicks;
@@ -129,6 +136,7 @@ public final class NexoraClient implements ClientModInitializer {
         handleEsp(client);
         handleTriggerBot(client);
         handleCombatExtras(client);
+        handleCoreCheats(client);
         handlePlayerExtras(client);
         handleUtilityExtras(client);
         handleAntiAfk(client);
@@ -274,6 +282,65 @@ public final class NexoraClient implements ClientModInitializer {
                 client.player.setVelocity(velocity.x * 1.06, velocity.y, velocity.z * 1.06);
                 velocity = client.player.getVelocity();
             }
+        }
+
+        if (modules.enabled("NoSlow") && client.player.isUsingItem()) {
+            Vec3d current = client.player.getVelocity();
+            double h = Math.sqrt(current.x * current.x + current.z * current.z);
+            if (h > 0.001 && h < 0.32) {
+                client.player.setVelocity(current.x * 1.35, current.y, current.z * 1.35);
+            }
+        }
+
+        if (modules.enabled("SafeWalk") && client.player.isOnGround()) {
+            Vec3d current = client.player.getVelocity();
+            BlockPos ahead = BlockPos.ofFloored(
+                    client.player.getX() + current.x * 2.2,
+                    client.player.getY() - 0.6,
+                    client.player.getZ() + current.z * 2.2
+            );
+            if (client.world.getBlockState(ahead).isAir()) {
+                client.player.setVelocity(0.0, current.y, 0.0);
+            }
+        }
+
+        if (modules.enabled("Jesus") && client.player.isTouchingWater()) {
+            Vec3d current = client.player.getVelocity();
+            client.player.setVelocity(current.x * 1.08, Math.max(0.08, current.y), current.z * 1.08);
+        }
+
+        if (modules.enabled("Parkour") && client.player.isOnGround() && client.options.forwardKey.isPressed()) {
+            double yaw = Math.toRadians(client.player.getYaw());
+            double aheadX = client.player.getX() - Math.sin(yaw) * 0.8;
+            double aheadZ = client.player.getZ() + Math.cos(yaw) * 0.8;
+            BlockPos belowAhead = BlockPos.ofFloored(aheadX, client.player.getY() - 0.6, aheadZ);
+            if (client.world.getBlockState(belowAhead).isAir()) {
+                client.player.jump();
+            }
+        }
+
+        if (modules.enabled("Step") && client.player.isOnGround() && client.player.horizontalCollision) {
+            Vec3d current = client.player.getVelocity();
+            client.player.setVelocity(current.x, 0.46, current.z);
+        }
+
+        client.player.noClip = modules.enabled("Phase");
+
+        if (modules.enabled("VehicleFly") && client.player.getVehicle() != null) {
+            Entity vehicle = client.player.getVehicle();
+            double yaw = Math.toRadians(client.player.getYaw());
+            double speed = 0.55;
+            double x = -Math.sin(yaw) * speed;
+            double z = Math.cos(yaw) * speed;
+            double y = client.options.jumpKey.isPressed() ? 0.35
+                    : client.options.sneakKey.isPressed() ? -0.35 : 0.0;
+            vehicle.setVelocity(x, y, z);
+        }
+
+        if (modules.enabled("AntiVoid")
+                && client.player.getY() <= client.world.getBottomY() + 5) {
+            Vec3d current = client.player.getVelocity();
+            client.player.setVelocity(current.x * 0.2, 1.0, current.z * 0.2);
         }
 
         if (modules.enabled("StrafeBoost")) {
@@ -449,6 +516,136 @@ public final class NexoraClient implements ClientModInitializer {
         } else {
             autoSwingTicks = 0;
         }
+    }
+
+    private void handleCoreCheats(MinecraftClient client) {
+        if (client.currentScreen == null && client.interactionManager != null) {
+            if (modules.enabled("KillAura") && client.player.getAttackCooldownProgress(0.0f) >= 0.92f) {
+                LivingEntity nearest = nearestLivingTarget(client, 4.5);
+                if (nearest != null) {
+                    client.interactionManager.attackEntity(client.player, nearest);
+                    client.player.swingHand(Hand.MAIN_HAND);
+                }
+            }
+
+            boolean attackPressed = client.options.attackKey.isPressed();
+
+            if (modules.enabled("Reach") && attackPressed && !reachWasPressed
+                    && client.player.getAttackCooldownProgress(0.0f) >= 0.80f) {
+                LivingEntity target = targetAlongLook(client, 6.0, 1.35);
+                if (target != null) {
+                    client.interactionManager.attackEntity(client.player, target);
+                    client.player.swingHand(Hand.MAIN_HAND);
+                }
+            }
+
+            reachWasPressed = attackPressed;
+        } else {
+            reachWasPressed = false;
+        }
+
+        if (modules.enabled("Velocity")) {
+            int hurt = client.player.hurtTime;
+            if (hurt > lastHurtTime) {
+                Vec3d velocity = client.player.getVelocity();
+                client.player.setVelocity(velocity.x * 0.25, velocity.y * 0.35, velocity.z * 0.25);
+            }
+            lastHurtTime = hurt;
+        } else {
+            lastHurtTime = client.player.hurtTime;
+        }
+
+        if (modules.enabled("NoFall") && client.player.fallDistance > 2.5f) {
+            client.player.setOnGround(true);
+            client.player.fallDistance = 0.0f;
+        }
+
+        if (modules.enabled("FastPlace") && client.currentScreen == null
+                && client.interactionManager != null && client.options.useKey.isPressed()) {
+            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+        }
+
+        if (modules.enabled("FastBreak") && client.currentScreen == null
+                && client.interactionManager != null && client.options.attackKey.isPressed()
+                && client.crosshairTarget instanceof BlockHitResult hit) {
+            client.interactionManager.updateBlockBreakingProgress(hit.getBlockPos(), hit.getSide());
+        }
+
+        if (modules.enabled("Nuker") && client.currentScreen == null && client.interactionManager != null) {
+            BlockPos center = client.player.getBlockPos();
+            boolean attacked = false;
+
+            for (int dy = -1; dy <= 2 && !attacked; dy++) {
+                for (int dx = -2; dx <= 2 && !attacked; dx++) {
+                    for (int dz = -2; dz <= 2; dz++) {
+                        BlockPos pos = center.add(dx, dy, dz);
+                        BlockState state = client.world.getBlockState(pos);
+                        if (!state.isAir()) {
+                            client.interactionManager.attackBlock(pos, Direction.UP);
+                            attacked = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (modules.enabled("AutoTool") && client.crosshairTarget instanceof BlockHitResult hit) {
+            BlockState state = client.world.getBlockState(hit.getBlockPos());
+            int bestSlot = client.player.getInventory().getSelectedSlot();
+            float bestSpeed = client.player.getInventory().getStack(bestSlot).getMiningSpeedMultiplier(state);
+
+            for (int slot = 0; slot < 9; slot++) {
+                ItemStack stack = client.player.getInventory().getStack(slot);
+                float speed = stack.getMiningSpeedMultiplier(state);
+                if (speed > bestSpeed) {
+                    bestSpeed = speed;
+                    bestSlot = slot;
+                }
+            }
+
+            client.player.getInventory().setSelectedSlot(bestSlot);
+        }
+    }
+
+    private LivingEntity nearestLivingTarget(MinecraftClient client, double range) {
+        LivingEntity nearest = null;
+        double best = range * range;
+
+        for (Entity entity : client.world.getEntities()) {
+            if (!(entity instanceof LivingEntity living) || entity == client.player || !entity.isAlive()) continue;
+            double distance = entity.squaredDistanceTo(client.player);
+            if (distance < best) {
+                best = distance;
+                nearest = living;
+            }
+        }
+
+        return nearest;
+    }
+
+    private LivingEntity targetAlongLook(MinecraftClient client, double range, double radius) {
+        Vec3d eye = client.player.getEyePos();
+        Vec3d look = client.player.getRotationVec(1.0f).normalize();
+
+        LivingEntity bestTarget = null;
+        double bestProjection = range + 1.0;
+
+        for (Entity entity : client.world.getEntities()) {
+            if (!(entity instanceof LivingEntity living) || entity == client.player || !entity.isAlive()) continue;
+
+            Vec3d toTarget = living.getBoundingBox().getCenter().subtract(eye);
+            double projection = toTarget.dotProduct(look);
+            if (projection < 0.0 || projection > range) continue;
+
+            double perpendicularSq = Math.max(0.0, toTarget.lengthSquared() - projection * projection);
+            if (perpendicularSq <= radius * radius && projection < bestProjection) {
+                bestProjection = projection;
+                bestTarget = living;
+            }
+        }
+
+        return bestTarget;
     }
 
     private void handlePlayerExtras(MinecraftClient client) {
@@ -691,6 +888,10 @@ public final class NexoraClient implements ClientModInitializer {
 
         if (module.name().equalsIgnoreCase("Zoom") && !module.enabled()) {
             restoreZoom(client);
+        }
+
+        if (module.name().equalsIgnoreCase("Phase") && !module.enabled() && client.player != null) {
+            client.player.noClip = false;
         }
 
         if (module.name().equalsIgnoreCase("Freecam")) {
