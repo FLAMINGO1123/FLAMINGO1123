@@ -22,6 +22,7 @@ public final class ModuleManager {
         add(new Module("Freecam", "Movement", "Detaches the camera while your player stays anchored.", false));
         add(new Module("HighJump", "Movement", "Higher ground jumps with adjustable power.", false));
         add(new Module("AirJump", "Movement", "Allows a jump impulse while airborne.", false));
+        add(new Module("FastFall", "Movement", "Pulls you downward faster while airborne.", false));
 
         add(new Module("ESP", "Render", "Entity boxes, labels and glow through terrain.", false));
         add(new Module("ItemESP", "Render", "Highlights dropped items.", false));
@@ -33,7 +34,8 @@ public final class ModuleManager {
 
         add(new Module("Waypoints", "World", "Shows saved waypoint markers and distances.", false));
 
-        add(new Module("HUD", "Misc", "Compact Nexora HUD and radar.", true));
+        add(new Module("HUD", "Misc", "Compact Nexora HUD.", true));
+        add(new Module("Radar", "Misc", "Optional top-right loaded-target radar.", false));
         add(new Module("AutoMine", "Misc", "Keeps the attack/mine key held.", false));
         add(new Module("AutoUse", "Misc", "Keeps the use-item key held.", false));
         add(new Module("AntiAFK", "Misc", "Adds small periodic camera movement while idle.", false));
