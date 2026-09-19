@@ -14,10 +14,12 @@ import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Locale;
@@ -43,8 +45,11 @@ public final class WorldEspRenderer {
         boolean waypoints = nexora.modules().enabled("Waypoints");
         boolean tracers = nexora.modules().enabled("Tracers");
         boolean xray = nexora.modules().enabled("XRay");
+        boolean entityEsp = nexora.modules().enabled("ESP")
+                || nexora.modules().enabled("ItemESP")
+                || nexora.modules().enabled("CrystalESP");
 
-        if (!block && !storage && !bases && !waypoints && !tracers && !xray) return;
+        if (!block && !storage && !bases && !waypoints && !tracers && !xray && !entityEsp) return;
 
         MatrixStack matrices = context.matrices();
         if (matrices == null || context.consumers() == null) return;
@@ -54,6 +59,10 @@ public final class WorldEspRenderer {
 
         matrices.push();
         matrices.translate(-camera.x, -camera.y, -camera.z);
+
+        if (entityEsp && nexora.entityBoxes()) {
+            drawEntityBoxes(client, matrices, lines);
+        }
 
         if (block && nexora.worldBoxes()) {
             int shown = 0;
@@ -100,9 +109,10 @@ public final class WorldEspRenderer {
 
         matrices.pop();
 
-        // Floating SEE_THROUGH text renders with Minecraft's no-depth text layer.
-        // This keeps target names/distances readable even when blocks are between
-        // the camera and the target.
+        if (entityEsp && nexora.entityLabels()) {
+            drawEntityLabels(context, client);
+        }
+
         if (bases && nexora.worldLabels()) {
             int shown = 0;
             for (BaseFinder.BaseCandidate candidate : nexora.baseFinder().candidates()) {
@@ -110,7 +120,7 @@ public final class WorldEspRenderer {
                 BlockPos p = candidate.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 2.7, p.getZ() + 0.5,
-                        "Possible Base  " + (int)candidate.distance() + "m",
+                        "Possible Base  " + (int) candidate.distance() + "m",
                         0xFFFF75EE);
             }
         }
@@ -122,7 +132,7 @@ public final class WorldEspRenderer {
                 BlockPos p = hit.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 1.25, p.getZ() + 0.5,
-                        "XRay " + shortName(hit.blockId()) + "  " + (int)hit.distance() + "m",
+                        "XRay " + shortName(hit.blockId()) + "  " + (int) hit.distance() + "m",
                         0xFF7CFF9D);
             }
         }
@@ -134,7 +144,7 @@ public final class WorldEspRenderer {
                 BlockPos p = hit.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 1.25, p.getZ() + 0.5,
-                        hit.type() + "  " + (int)hit.distance() + "m",
+                        hit.type() + "  " + (int) hit.distance() + "m",
                         0xFFFFD76A);
             }
         }
@@ -146,7 +156,7 @@ public final class WorldEspRenderer {
                 BlockPos p = hit.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 1.25, p.getZ() + 0.5,
-                        shortName(hit.blockId()) + "  " + (int)hit.distance() + "m",
+                        shortName(hit.blockId()) + "  " + (int) hit.distance() + "m",
                         0xFF65ECFF);
             }
         }
@@ -159,35 +169,124 @@ public final class WorldEspRenderer {
                 double distance = Math.sqrt(client.player.getBlockPos().getSquaredDistance(p));
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 2.0, p.getZ() + 0.5,
-                        waypoint.name() + "  " + (int)distance + "m",
+                        waypoint.name() + "  " + (int) distance + "m",
                         0xFFB99CFF);
             }
         }
     }
 
-    private void drawTracers(MinecraftClient client, MatrixStack matrices, VertexConsumer lines) {
-        Vec3d start = client.player.getEyePos();
-        double maxSq = (double)nexora.espRange() * nexora.espRange();
+    private void drawEntityBoxes(MinecraftClient client, MatrixStack matrices, VertexConsumer lines) {
+        double maxSq = (double) nexora.espRange() * nexora.espRange();
+        int shown = 0;
+
+        for (Entity entity : client.world.getEntities()) {
+            if (shown >= 80) break;
+            if (!isEntityTarget(client, entity)) continue;
+            if (entity.squaredDistanceTo(client.player) > maxSq) continue;
+
+            Box box = entity.getBoundingBox().expand(0.04);
+            float[] color = entityColor(entity);
+
+            drawBox(
+                    matrices, lines,
+                    box.minX, box.minY, box.minZ,
+                    box.maxX, box.maxY, box.maxZ,
+                    color[0], color[1], color[2], 0.95f
+            );
+            shown++;
+        }
+    }
+
+    private void drawEntityLabels(WorldRenderContext context, MinecraftClient client) {
+        double maxSq = (double) nexora.espRange() * nexora.espRange();
         int shown = 0;
 
         for (Entity entity : client.world.getEntities()) {
             if (shown >= 40) break;
-            if (entity == client.player) continue;
+            if (!isEntityTarget(client, entity)) continue;
             if (entity.squaredDistanceTo(client.player) > maxSq) continue;
 
-            boolean target = false;
-            if (entity instanceof PlayerEntity && nexora.espPlayers()) target = true;
-            else if (entity instanceof LivingEntity && !(entity instanceof PlayerEntity) && nexora.espMobs()) target = true;
-            else if (entity instanceof ItemEntity && nexora.modules().enabled("ItemESP")) target = true;
+            double distance = Math.sqrt(entity.squaredDistanceTo(client.player));
+            String name;
 
-            if (!target) continue;
+            if (entity instanceof ItemEntity item) {
+                name = item.getStack().getName().getString();
+            } else if (entity.getType() == EntityType.END_CRYSTAL) {
+                name = "End Crystal";
+            } else {
+                name = entity.getName().getString();
+            }
+
+            int color = entity instanceof PlayerEntity
+                    ? 0xFFB99CFF
+                    : entity instanceof ItemEntity
+                    ? 0xFF65ECFF
+                    : entity.getType() == EntityType.END_CRYSTAL
+                    ? 0xFFFF72E8
+                    : 0xFFFFD76A;
+
+            drawLabel(
+                    context,
+                    client,
+                    entity.getX(),
+                    entity.getBoundingBox().maxY + 0.35,
+                    entity.getZ(),
+                    name + "  " + (int) distance + "m",
+                    color
+            );
             shown++;
+        }
+    }
+
+    private boolean isEntityTarget(MinecraftClient client, Entity entity) {
+        if (entity == client.player) return false;
+
+        if (entity instanceof PlayerEntity) {
+            return nexora.modules().enabled("ESP") && nexora.espPlayers();
+        }
+
+        if (entity instanceof ItemEntity) {
+            return nexora.modules().enabled("ItemESP");
+        }
+
+        if (entity.getType() == EntityType.END_CRYSTAL) {
+            return nexora.modules().enabled("CrystalESP");
+        }
+
+        if (entity instanceof LivingEntity) {
+            return nexora.modules().enabled("ESP") && nexora.espMobs();
+        }
+
+        return false;
+    }
+
+    private float[] entityColor(Entity entity) {
+        if (entity instanceof PlayerEntity) return new float[]{0.72f, 0.50f, 1.00f};
+        if (entity instanceof ItemEntity) return new float[]{0.20f, 0.90f, 1.00f};
+        if (entity.getType() == EntityType.END_CRYSTAL) return new float[]{1.00f, 0.35f, 0.85f};
+        return new float[]{1.00f, 0.78f, 0.28f};
+    }
+
+    private void drawTracers(MinecraftClient client, MatrixStack matrices, VertexConsumer lines) {
+        Vec3d start = client.gameRenderer.getCamera().getCameraPos();
+        double maxSq = (double) nexora.espRange() * nexora.espRange();
+        int shown = 0;
+
+        for (Entity entity : client.world.getEntities()) {
+            if (shown >= 40) break;
+            if (!isEntityTarget(client, entity)) continue;
+            if (entity.squaredDistanceTo(client.player) > maxSq) continue;
 
             Vec3d end = entity.getBoundingBox().getCenter();
-            line(matrices, lines,
+            float[] color = entityColor(entity);
+
+            line(
+                    matrices, lines,
                     start.x, start.y, start.z,
                     end.x, end.y, end.z,
-                    0.62f, 0.35f, 1.00f, 0.80f);
+                    color[0], color[1], color[2], 0.82f
+            );
+            shown++;
         }
     }
 
@@ -215,6 +314,7 @@ public final class WorldEspRenderer {
                 0x66000000,
                 LightmapTextureManager.MAX_LIGHT_COORDINATE
         );
+
         matrices.pop();
     }
 
@@ -257,16 +357,20 @@ public final class WorldEspRenderer {
         float dy = (float)(y2 - y1);
         float dz = (float)(z2 - z1);
         float len = (float)Math.sqrt(dx * dx + dy * dy + dz * dz);
+
         if (len < 0.0001f) return;
+
         dx /= len;
         dy /= len;
         dz /= len;
 
         MatrixStack.Entry entry = matrices.peek();
+
         out.vertex(entry, (float)x1, (float)y1, (float)z1)
                 .color(r, g, b, a)
                 .normal(entry, dx, dy, dz)
                 .lineWidth(2.0f);
+
         out.vertex(entry, (float)x2, (float)y2, (float)z2)
                 .color(r, g, b, a)
                 .normal(entry, dx, dy, dz)
@@ -277,11 +381,13 @@ public final class WorldEspRenderer {
         String s = id.contains(":") ? id.substring(id.indexOf(':') + 1) : id;
         String[] parts = s.split("_");
         StringBuilder out = new StringBuilder();
+
         for (String part : parts) {
             if (part.isEmpty()) continue;
             if (!out.isEmpty()) out.append(' ');
             out.append(part.substring(0, 1).toUpperCase(Locale.ROOT)).append(part.substring(1));
         }
+
         return out.toString();
     }
 }
