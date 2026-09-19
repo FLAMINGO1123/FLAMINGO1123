@@ -53,6 +53,7 @@ public final class NexoraClient implements ClientModInitializer {
     private float flySpeed = 0.10f;
     private float speedMultiplier = 1.45f;
     private float highJumpPower = 0.72f;
+    private float fastFallSpeed = 0.30f;
     private int zoomFov = 30;
 
     private boolean espPlayers = true;
@@ -62,6 +63,11 @@ public final class NexoraClient implements ClientModInitializer {
     private boolean entityLabels = true;
     private boolean worldLabels = true;
     private boolean worldBoxes = true;
+
+    private boolean hudCoordinates = true;
+    private boolean hudActiveModules = true;
+    private int radarRows = 8;
+    private int guiOpacity = 175;
 
     private boolean rememberedAllowFlying;
     private boolean flyStateCaptured;
@@ -108,6 +114,7 @@ public final class NexoraClient implements ClientModInitializer {
         handleHeldKeys(client);
         handleSpeed(client);
         handleJumpModules(client);
+        handleFastFall(client);
         handleFullbright(client);
         handleZoom(client);
         handleEsp(client);
@@ -206,6 +213,16 @@ public final class NexoraClient implements ClientModInitializer {
         jumpWasPressed = pressed;
     }
 
+    private void handleFastFall(MinecraftClient client) {
+        if (!modules.enabled("FastFall") || modules.enabled("Freecam")) return;
+        if (client.player.isOnGround() || client.player.isClimbing() || client.player.isTouchingWater()) return;
+
+        Vec3d velocity = client.player.getVelocity();
+        if (velocity.y < 0.0) {
+            client.player.setVelocity(velocity.x, Math.min(velocity.y, -fastFallSpeed), velocity.z);
+        }
+    }
+
     private void handleFullbright(MinecraftClient client) {
         if (modules.enabled("Fullbright")) {
             if (rememberedGamma == null) rememberedGamma = client.options.getGamma().getValue();
@@ -293,43 +310,53 @@ public final class NexoraClient implements ClientModInitializer {
 
     private void renderHud(DrawContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || !modules.enabled("HUD")) return;
+        if (client.player == null) return;
+
+        boolean hud = modules.enabled("HUD");
+        boolean radar = modules.enabled("Radar");
+        if (!hud && !radar) return;
 
         final int purple = 0xFFB58CFF;
         final int purple2 = 0xFF8B5CF6;
         final int white = 0xFFF4F1FA;
         final int muted = 0xFFA9A3B5;
-        final int panel = 0xA0100E16;
+        final int panel = 0x90100E16;
 
-        int x = 7;
-        int y = 7;
+        if (hud) {
+            int x = 7;
+            int y = 7;
+            int boxH = hudCoordinates ? 34 : 22;
 
-        context.fill(3, 3, 166, 34, panel);
-        context.fill(3, 3, 166, 5, purple2);
-        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V7", x, y, purple);
-        context.drawTextWithShadow(client.textRenderer,
-                "XYZ " + client.player.getBlockX() + " " + client.player.getBlockY() + " " + client.player.getBlockZ(),
-                x, y + 13, white);
+            context.fill(3, 3, 166, boxH, panel);
+            context.fill(3, 3, 166, 5, purple2);
+            context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V8", x, y, purple);
 
-        int line = y + 38;
-        for (Module module : modules.all()) {
-            if (!module.enabled() || module.name().equals("HUD")) continue;
-            context.drawTextWithShadow(client.textRenderer, module.name(), x, line, purple);
-            line += 11;
-            if (line > 182) break;
+            if (hudCoordinates) {
+                context.drawTextWithShadow(client.textRenderer,
+                        "XYZ " + client.player.getBlockX() + " " + client.player.getBlockY() + " " + client.player.getBlockZ(),
+                        x, y + 13, white);
+            }
+
+            if (hudActiveModules) {
+                int line = boxH + 6;
+                for (Module module : modules.all()) {
+                    if (!module.enabled()
+                            || module.name().equals("HUD")
+                            || module.name().equals("Radar")) continue;
+
+                    context.drawTextWithShadow(client.textRenderer, module.name(), x, line, purple);
+                    line += 11;
+                    if (line > 182) break;
+                }
+            }
         }
 
-        boolean showRadar = modules.enabled("BlockESP")
-                || modules.enabled("StorageESP")
-                || modules.enabled("BaseFinder")
-                || modules.enabled("XRay");
+        if (!radar) return;
 
-        if (!showRadar) return;
-
-        int radarW = 190;
+        int radarW = 175;
         int rx = Math.max(4, context.getScaledWindowWidth() - radarW - 6);
         int ry = 6;
-        int maxRows = 10;
+        int maxRows = radarRows;
         int radarH = 32 + maxRows * 11;
 
         context.fill(rx, ry, rx + radarW, ry + radarH, panel);
@@ -343,7 +370,7 @@ public final class NexoraClient implements ClientModInitializer {
         if (modules.enabled("BaseFinder")) {
             for (BaseFinder.BaseCandidate candidate : baseFinder.candidates()) {
                 if (row++ >= maxRows) break;
-                String s = "BASE? " + (int) candidate.distance() + "m  [" + candidate.score() + "]";
+                String s = "BASE? " + (int) candidate.distance() + "m [" + candidate.score() + "]";
                 context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFFFF72E8);
                 ty += 11;
             }
@@ -459,6 +486,11 @@ public final class NexoraClient implements ClientModInitializer {
         highJumpPower = Math.max(0.42f, Math.min(1.5f, value));
     }
 
+    public float fastFallSpeed() { return fastFallSpeed; }
+    public void setFastFallSpeed(float value) {
+        fastFallSpeed = Math.max(0.10f, Math.min(1.0f, value));
+    }
+
     public int zoomFov() { return zoomFov; }
     public void setZoomFov(int value) {
         zoomFov = Math.max(10, Math.min(70, value));
@@ -486,4 +518,16 @@ public final class NexoraClient implements ClientModInitializer {
 
     public boolean worldBoxes() { return worldBoxes; }
     public void setWorldBoxes(boolean value) { worldBoxes = value; }
+
+    public boolean hudCoordinates() { return hudCoordinates; }
+    public void setHudCoordinates(boolean value) { hudCoordinates = value; }
+
+    public boolean hudActiveModules() { return hudActiveModules; }
+    public void setHudActiveModules(boolean value) { hudActiveModules = value; }
+
+    public int radarRows() { return radarRows; }
+    public void setRadarRows(int value) { radarRows = Math.max(4, Math.min(16, value)); }
+
+    public int guiOpacity() { return guiOpacity; }
+    public void setGuiOpacity(int value) { guiOpacity = Math.max(90, Math.min(235, value)); }
 }
