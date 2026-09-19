@@ -74,7 +74,7 @@ public final class WorldEspRenderer {
         if (block && nexora.worldBoxes()) {
             int shown = 0;
             for (BlockEspManager.BlockHit hit : nexora.blockEsp().hits()) {
-                if (shown++ >= 96) break;
+                if (shown++ >= 768) break;
                 drawBlockBox(matrices, lines, hit.pos(), 0.15f, 0.90f, 1.00f, 0.95f);
             }
         }
@@ -82,7 +82,7 @@ public final class WorldEspRenderer {
         if (xray && nexora.worldBoxes()) {
             int shown = 0;
             for (XRayManager.Hit hit : nexora.xray().hits()) {
-                if (shown++ >= 128) break;
+                if (shown++ >= 768) break;
                 drawBlockBox(matrices, lines, hit.pos(), 0.35f, 1.00f, 0.55f, 0.95f);
             }
         }
@@ -90,7 +90,7 @@ public final class WorldEspRenderer {
         if (storage && nexora.worldBoxes()) {
             int shown = 0;
             for (BaseFinder.StorageHit hit : nexora.baseFinder().hits()) {
-                if (shown++ >= 80) break;
+                if (shown++ >= 512) break;
                 drawBlockBox(matrices, lines, hit.pos(), 1.00f, 0.70f, 0.15f, 0.95f);
             }
         }
@@ -98,7 +98,7 @@ public final class WorldEspRenderer {
         if (bases && nexora.worldBoxes()) {
             int shown = 0;
             for (BaseFinder.BaseCandidate candidate : nexora.baseFinder().candidates()) {
-                if (shown++ >= 12) break;
+                if (shown++ >= 64) break;
                 BlockPos p = candidate.pos();
                 double radius = Math.min(3.5, 1.0 + candidate.score() * 0.12);
                 drawBox(
@@ -127,7 +127,7 @@ public final class WorldEspRenderer {
         if (bases && nexora.worldLabels()) {
             int shown = 0;
             for (BaseFinder.BaseCandidate candidate : nexora.baseFinder().candidates()) {
-                if (shown++ >= 8) break;
+                if (shown++ >= 32) break;
                 BlockPos p = candidate.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 2.7, p.getZ() + 0.5,
@@ -139,7 +139,7 @@ public final class WorldEspRenderer {
         if (xray && nexora.worldLabels()) {
             int shown = 0;
             for (XRayManager.Hit hit : nexora.xray().hits()) {
-                if (shown++ >= 24) break;
+                if (shown++ >= 96) break;
                 BlockPos p = hit.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 1.25, p.getZ() + 0.5,
@@ -151,7 +151,7 @@ public final class WorldEspRenderer {
         if (storage && nexora.worldLabels()) {
             int shown = 0;
             for (BaseFinder.StorageHit hit : nexora.baseFinder().hits()) {
-                if (shown++ >= 14) break;
+                if (shown++ >= 96) break;
                 BlockPos p = hit.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 1.25, p.getZ() + 0.5,
@@ -163,7 +163,7 @@ public final class WorldEspRenderer {
         if (block && nexora.worldLabels()) {
             int shown = 0;
             for (BlockEspManager.BlockHit hit : nexora.blockEsp().hits()) {
-                if (shown++ >= 18) break;
+                if (shown++ >= 96) break;
                 BlockPos p = hit.pos();
                 drawLabel(context, client,
                         p.getX() + 0.5, p.getY() + 1.25, p.getZ() + 0.5,
@@ -226,7 +226,7 @@ public final class WorldEspRenderer {
         int shown = 0;
 
         for (Entity entity : client.world.getEntities()) {
-            if (shown >= 80) break;
+            if (shown >= 256) break;
             if (!isEntityTarget(client, entity)) continue;
             if (entity.squaredDistanceTo(client.player) > maxSq) continue;
 
@@ -248,7 +248,7 @@ public final class WorldEspRenderer {
         int shown = 0;
 
         for (Entity entity : client.world.getEntities()) {
-            if (shown >= 40) break;
+            if (shown >= 128) break;
             if (!isEntityTarget(client, entity)) continue;
             if (entity.squaredDistanceTo(client.player) > maxSq) continue;
 
