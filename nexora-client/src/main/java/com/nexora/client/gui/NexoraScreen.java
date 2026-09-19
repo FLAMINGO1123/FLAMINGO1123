@@ -84,6 +84,11 @@ public final class NexoraScreen extends Screen {
             drawCategoryPanel(context, mouseX, mouseY, panel);
         }
 
+        if (!openSettings.isEmpty()) {
+            applyBlur(context);
+            renderDarkening(context);
+        }
+
         for (SettingsPos panel : settingsPanels()) {
             drawSettingsPanel(context, mouseX, mouseY, panel);
         }
@@ -363,12 +368,15 @@ public final class NexoraScreen extends Screen {
         double my = click.y();
         int button = click.button();
 
-        for (PanelPos panel : categoryPanels()) {
-            if (handleCategoryClick(mx, my, button, panel)) return true;
+        if (!openSettings.isEmpty()) {
+            for (SettingsPos panel : settingsPanels()) {
+                if (handleSettingsClick(mx, my, button, panel)) return true;
+            }
+            return true;
         }
 
-        for (SettingsPos panel : settingsPanels()) {
-            if (handleSettingsClick(mx, my, button, panel)) return true;
+        for (PanelPos panel : categoryPanels()) {
+            if (handleCategoryClick(mx, my, button, panel)) return true;
         }
 
         return super.mouseClicked(click, doubled);
@@ -389,11 +397,10 @@ public final class NexoraScreen extends Screen {
         for (Module module : nexora.modules().category(panel.category)) {
             if (inside(mx, my, panel.x + 3, ry, panel.w - 6, 16)) {
                 if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-                    if (openSettings.contains(module.name())) openSettings.remove(module.name());
-                    else {
-                        openSettings.add(module.name());
-                        tabs.putIfAbsent(module.name(), 0);
-                    }
+                    openSettings.clear();
+                    openSettings.add(module.name());
+                    tabs.putIfAbsent(module.name(), 0);
+                    panelAnimations.put("set:" + module.name(), 0.0f);
                 } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                     module.toggle();
                     nexora.onModuleToggled(module);
@@ -684,27 +691,15 @@ public final class NexoraScreen extends Screen {
 
     private List<SettingsPos> settingsPanels() {
         List<SettingsPos> result = new ArrayList<>();
+        if (openSettings.isEmpty()) return result;
 
-        int w = Math.min(185, Math.max(150, width / 3));
-        int gap = 4;
-        int x = 8;
-        int y = categoryGridBottom() + 6;
-        int rowHeight = 0;
+        String module = openSettings.iterator().next();
+        int w = Math.min(300, Math.max(225, width / 3));
+        int h = settingsHeight(module);
+        int x = (width - w) / 2;
+        int y = Math.max(12, (height - h) / 2);
 
-        for (String module : openSettings) {
-            int h = settingsHeight(module);
-
-            if (x + w > width - 8 && x > 8) {
-                x = 8;
-                y += rowHeight + gap;
-                rowHeight = 0;
-            }
-
-            result.add(new SettingsPos(module, x, y, w, h));
-            x += w + gap;
-            rowHeight = Math.max(rowHeight, h);
-        }
-
+        result.add(new SettingsPos(module, x, y, w, h));
         return result;
     }
 
@@ -805,6 +800,15 @@ public final class NexoraScreen extends Screen {
 
     private boolean inside(double mx, double my, int x, int y, int w, int h) {
         return mx >= x && mx < x + w && my >= y && my < y + h;
+    }
+
+    @Override
+    public void close() {
+        if (!openSettings.isEmpty()) {
+            openSettings.clear();
+            return;
+        }
+        super.close();
     }
 
     @Override
