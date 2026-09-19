@@ -5,7 +5,9 @@ import com.nexora.client.core.Module;
 import com.nexora.client.core.ModuleManager;
 import com.nexora.client.feature.BaseFinder;
 import com.nexora.client.feature.BlockEspManager;
+import com.nexora.client.feature.FreecamManager;
 import com.nexora.client.feature.RelogManager;
+import com.nexora.client.feature.XRayManager;
 import com.nexora.client.feature.WaypointManager;
 import com.nexora.client.gui.NexoraScreen;
 import com.nexora.client.render.WorldEspRenderer;
@@ -38,6 +40,8 @@ public final class NexoraClient implements ClientModInitializer {
     private final WaypointManager waypoints = new WaypointManager();
     private final BaseFinder baseFinder = new BaseFinder();
     private final BlockEspManager blockEsp = new BlockEspManager();
+    private final XRayManager xray = new XRayManager();
+    private final FreecamManager freecam = new FreecamManager();
     private final RelogManager relog = new RelogManager();
     private final WorldEspRenderer worldEspRenderer = new WorldEspRenderer(this);
 
@@ -93,8 +97,10 @@ public final class NexoraClient implements ClientModInitializer {
         handleSpeed(client);
         handleFullbright(client);
         handleEsp(client);
+        freecam.tick(client);
 
         blockEsp.tick(client, modules.enabled("BlockESP"));
+        xray.tick(client, modules.enabled("XRay"));
         baseFinder.tick(client, modules.enabled("StorageESP"), modules.enabled("BaseFinder"));
     }
 
@@ -209,7 +215,7 @@ public final class NexoraClient implements ClientModInitializer {
         int y = 7;
         context.fill(3, 3, 170, 34, panel);
         context.fill(3, 3, 170, 5, purple2);
-        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V4", x, y, purple);
+        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V5", x, y, purple);
         context.drawTextWithShadow(client.textRenderer,
                 "XYZ " + client.player.getBlockX() + " " + client.player.getBlockY() + " " + client.player.getBlockZ(),
                 x, y + 13, white);
@@ -222,7 +228,7 @@ public final class NexoraClient implements ClientModInitializer {
             if (line > 182) break;
         }
 
-        boolean showRadar = modules.enabled("BlockESP") || modules.enabled("StorageESP") || modules.enabled("BaseFinder");
+        boolean showRadar = modules.enabled("BlockESP") || modules.enabled("StorageESP") || modules.enabled("BaseFinder") || modules.enabled("XRay");
         if (!showRadar) return;
 
         int radarW = 198;
@@ -252,6 +258,15 @@ public final class NexoraClient implements ClientModInitializer {
                 if (row++ >= maxRows) break;
                 String s = shortBlockName(hit.blockId()) + "  " + (int) hit.distance() + "m";
                 context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFF7CEAFF);
+                ty += 11;
+            }
+        }
+
+        if (modules.enabled("XRay") && row < maxRows) {
+            for (XRayManager.Hit hit : xray.hits()) {
+                if (row++ >= maxRows) break;
+                String s = "XRAY " + shortBlockName(hit.blockId()) + "  " + (int) hit.distance() + "m";
+                context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFF7CFF9D);
                 ty += 11;
             }
         }
@@ -295,12 +310,19 @@ public final class NexoraClient implements ClientModInitializer {
         if (module.name().equalsIgnoreCase("Fullbright") && !module.enabled()) {
             restoreFullbright(client);
         }
+
+        if (module.name().equalsIgnoreCase("Freecam")) {
+            if (module.enabled()) freecam.enable(client);
+            else freecam.disable(client);
+        }
     }
 
     public ModuleManager modules() { return modules; }
     public WaypointManager waypoints() { return waypoints; }
     public BaseFinder baseFinder() { return baseFinder; }
     public BlockEspManager blockEsp() { return blockEsp; }
+    public XRayManager xray() { return xray; }
+    public FreecamManager freecam() { return freecam; }
     public RelogManager relog() { return relog; }
 
     public float flySpeed() { return flySpeed; }
