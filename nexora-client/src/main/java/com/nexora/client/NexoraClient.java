@@ -92,6 +92,7 @@ public final class NexoraClient implements ClientModInitializer {
     private int handSwingTicks;
     private int utilityTicks;
     private int quickTurnTicks;
+    private int respawnTicks;
 
     @Override
     public void onInitializeClient() {
@@ -172,16 +173,38 @@ public final class NexoraClient implements ClientModInitializer {
     }
 
     private void handleSprint(MinecraftClient client) {
-        if (modules.enabled("Sprint") && client.options.forwardKey.isPressed()) {
-            client.player.setSprinting(true);
-        }
+        if (!modules.enabled("Sprint")) return;
+
+        boolean moving = settings.bool("Sprint", "forwardOnly", true)
+                ? client.options.forwardKey.isPressed()
+                : client.options.forwardKey.isPressed()
+                || client.options.backKey.isPressed()
+                || client.options.leftKey.isPressed()
+                || client.options.rightKey.isPressed();
+
+        if (moving) client.player.setSprinting(true);
     }
 
     private void handleHeldKeys(MinecraftClient client) {
-        if (modules.enabled("AutoWalk")) client.options.forwardKey.setPressed(true);
-        if (modules.enabled("AutoSneak")) client.options.sneakKey.setPressed(true);
-        if (modules.enabled("AutoMine")) client.options.attackKey.setPressed(true);
-        if (modules.enabled("AutoUse")) client.options.useKey.setPressed(true);
+        if (modules.enabled("AutoWalk")) {
+            client.options.forwardKey.setPressed(true);
+            if (settings.bool("AutoWalk", "sprint", false)) client.player.setSprinting(true);
+        }
+
+        if (modules.enabled("AutoSneak")) {
+            boolean pulse = settings.bool("AutoSneak", "pulse", false);
+            client.options.sneakKey.setPressed(!pulse || (utilityTicks / 5) % 2 == 0);
+        }
+
+        if (modules.enabled("AutoMine")) {
+            boolean onlyTarget = settings.bool("AutoMine", "onlyTarget", false);
+            client.options.attackKey.setPressed(!onlyTarget || client.crosshairTarget instanceof BlockHitResult);
+        }
+
+        if (modules.enabled("AutoUse")) {
+            int interval = Math.max(1, (int) settings.number("AutoUse", "interval", 1));
+            client.options.useKey.setPressed(interval == 1 || utilityTicks % interval == 0);
+        }
     }
 
     private void handleSpeed(MinecraftClient client) {
@@ -679,8 +702,14 @@ public final class NexoraClient implements ClientModInitializer {
 
     private void handlePlayerExtras(MinecraftClient client) {
         if (modules.enabled("AutoRespawn") && client.player.isDead()) {
-            client.player.requestRespawn();
+            respawnTicks++;
+            if (respawnTicks >= (int) settings.number("AutoRespawn", "delay", 0)) {
+                respawnTicks = 0;
+                client.player.requestRespawn();
+            }
             return;
+        } else {
+            respawnTicks = 0;
         }
 
         if (modules.enabled("SpinBot")) {
@@ -715,8 +744,14 @@ public final class NexoraClient implements ClientModInitializer {
             handSwingTicks = 0;
         }
 
-        if (modules.enabled("KeepSprint") && client.options.forwardKey.isPressed()) {
-            client.player.setSprinting(true);
+        if (modules.enabled("KeepSprint")) {
+            boolean moving = settings.bool("KeepSprint", "forwardOnly", true)
+                    ? client.options.forwardKey.isPressed()
+                    : client.options.forwardKey.isPressed()
+                    || client.options.backKey.isPressed()
+                    || client.options.leftKey.isPressed()
+                    || client.options.rightKey.isPressed();
+            if (moving) client.player.setSprinting(true);
         }
     }
 
@@ -863,7 +898,9 @@ public final class NexoraClient implements ClientModInitializer {
         xray.setScanRange((int) settings.number("XRay", "range", xray.scanRange()));
         xray.setVerticalRange((int) settings.number("XRay", "vertical", xray.verticalRange()));
 
-        baseFinder.setScanRange((int) settings.number("BaseFinder", "range", baseFinder.scanRange()));
+        int storageRange = (int) settings.number("StorageESP", "range", baseFinder.scanRange());
+        int baseRange = (int) settings.number("BaseFinder", "range", baseFinder.scanRange());
+        baseFinder.setScanRange(modules.enabled("BaseFinder") ? baseRange : storageRange);
         baseFinder.setVerticalRange((int) settings.number("BaseFinder", "vertical", baseFinder.verticalRange()));
         baseFinder.setMinClusterSize((int) settings.number("BaseFinder", "minCluster", baseFinder.minClusterSize()));
         baseFinder.setClusterRadius((int) settings.number("BaseFinder", "clusterRadius", baseFinder.clusterRadius()));
