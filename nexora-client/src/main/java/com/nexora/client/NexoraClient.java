@@ -93,6 +93,7 @@ public final class NexoraClient implements ClientModInitializer {
     private int utilityTicks;
     private int quickTurnTicks;
     private int respawnTicks;
+    private boolean attackActionUsedThisTick;
 
     @Override
     public void onInitializeClient() {
@@ -126,6 +127,8 @@ public final class NexoraClient implements ClientModInitializer {
             restoreZoom(client);
             return;
         }
+
+        attackActionUsedThisTick = false;
 
         handleFlight(client);
         handleSprint(client);
@@ -472,10 +475,9 @@ public final class NexoraClient implements ClientModInitializer {
         if (target instanceof LivingEntity && !(target instanceof PlayerEntity) && !settings.bool("TriggerBot", "mobs", true)) return;
         double triggerRange = settings.number("TriggerBot", "range", 4.5);
         if (target.squaredDistanceTo(client.player) > triggerRange * triggerRange) return;
-        if (client.player.getAttackCooldownProgress(0.0f) < settings.number("TriggerBot", "cooldown", 0.92)) return;
-
-        client.interactionManager.attackEntity(client.player, target);
-        client.player.swingHand(Hand.MAIN_HAND);
+        tryAttack(client, target,
+                settings.number("TriggerBot", "cooldown", 0.92),
+                triggerRange);
     }
 
     private void handleCombatExtras(MinecraftClient client) {
@@ -510,8 +512,9 @@ public final class NexoraClient implements ClientModInitializer {
                 float targetYaw = (float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
                 float targetPitch = (float)(-Math.toDegrees(Math.atan2(dy, horizontal)));
                 float strength = (float) settings.number("AimAssist", "strength", 0.35);
-                client.player.setYaw(client.player.getYaw() + wrapDegrees(targetYaw - client.player.getYaw()) * strength);
-                client.player.setPitch(client.player.getPitch() + (targetPitch - client.player.getPitch()) * strength);
+                float nextYaw = client.player.getYaw() + wrapDegrees(targetYaw - client.player.getYaw()) * strength;
+                float nextPitch = client.player.getPitch() + (targetPitch - client.player.getPitch()) * strength;
+                setRotationIfChanged(client, nextYaw, nextPitch);
             }
         }
 
@@ -521,9 +524,10 @@ public final class NexoraClient implements ClientModInitializer {
                 Entity target = hit.getEntity();
                 if (target != client.player && target.isAlive()
                         && client.player.getAttackCooldownProgress(0.0f) >= settings.number("AutoClicker", "cooldown", 0.80)) {
-                    autoClickTicks = 0;
-                    client.interactionManager.attackEntity(client.player, target);
-                    client.player.swingHand(Hand.MAIN_HAND);
+                    if (tryAttack(client, target,
+                            settings.number("AutoClicker", "cooldown", 0.80), 4.5)) {
+                        autoClickTicks = 0;
+                    }
                 }
             }
         } else {
@@ -565,8 +569,9 @@ public final class NexoraClient implements ClientModInitializer {
                         settings.bool("KillAura", "players", true),
                         settings.bool("KillAura", "mobs", true));
                 if (nearest != null) {
-                    client.interactionManager.attackEntity(client.player, nearest);
-                    client.player.swingHand(Hand.MAIN_HAND);
+                    tryAttack(client, nearest,
+                            settings.number("KillAura", "cooldown", 0.92),
+                            settings.number("KillAura", "range", 4.5));
                 }
             }
 
@@ -578,8 +583,9 @@ public final class NexoraClient implements ClientModInitializer {
                         settings.number("Reach", "range", 6.0),
                         settings.number("Reach", "radius", 1.35));
                 if (target != null) {
-                    client.interactionManager.attackEntity(client.player, target);
-                    client.player.swingHand(Hand.MAIN_HAND);
+                    tryAttack(client, target,
+                            settings.number("Reach", "cooldown", 0.80),
+                            settings.number("Reach", "range", 3.0));
                 }
             }
 
@@ -601,7 +607,9 @@ public final class NexoraClient implements ClientModInitializer {
             lastHurtTime = client.player.hurtTime;
         }
 
-        if (modules.enabled("NoFall") && client.player.fallDistance > settings.number("NoFall", "threshold", 2.5)) {
+        if (modules.enabled("NoFall")
+                && client.getServer() != null
+                && client.player.fallDistance > settings.number("NoFall", "threshold", 2.5)) {
             client.player.setOnGround(true);
             client.player.fallDistance = 0.0f;
         }
@@ -656,6 +664,33 @@ public final class NexoraClient implements ClientModInitializer {
 
             client.player.getInventory().setSelectedSlot(bestSlot);
         }
+    }
+
+    private boolean tryAttack(MinecraftClient client, Entity target, double cooldown, double maxRange) {
+        if (attackActionUsedThisTick || client.interactionManager == null || client.currentScreen != null) return false;
+        if (target == null || target == client.player || !target.isAlive()) return false;
+        if (client.player.getAttackCooldownProgress(0.0f) < cooldown) return false;
+
+        double range = Math.max(0.0, maxRange);
+        if (target.squaredDistanceTo(client.player) > range * range) return false;
+
+        attackActionUsedThisTick = true;
+        client.interactionManager.attackEntity(client.player, target);
+        client.player.swingHand(Hand.MAIN_HAND);
+        return true;
+    }
+
+    private void setRotationIfChanged(MinecraftClient client, float yaw, float pitch) {
+        float currentYaw = client.player.getYaw();
+        float currentPitch = client.player.getPitch();
+        float yawDelta = Math.abs(wrapDegrees(yaw - currentYaw));
+        float clampedPitch = Math.max(-90.0f, Math.min(90.0f, pitch));
+        float pitchDelta = Math.abs(clampedPitch - currentPitch);
+
+        if (yawDelta < 0.05f && pitchDelta < 0.05f) return;
+
+        client.player.setYaw(yaw);
+        client.player.setPitch(clampedPitch);
     }
 
     private LivingEntity nearestLivingTarget(MinecraftClient client, double range, boolean players, boolean mobs) {
@@ -713,17 +748,21 @@ public final class NexoraClient implements ClientModInitializer {
         }
 
         if (modules.enabled("SpinBot")) {
-            client.player.setYaw(client.player.getYaw() + (float) settings.number("SpinBot", "speed", 14));
+            setRotationIfChanged(client,
+                    client.player.getYaw() + (float) settings.number("SpinBot", "speed", 14),
+                    client.player.getPitch());
         }
 
         if (modules.enabled("PitchLock")) {
-            client.player.setPitch((float) settings.number("PitchLock", "pitch", 0));
+            setRotationIfChanged(client,
+                    client.player.getYaw(),
+                    (float) settings.number("PitchLock", "pitch", 0));
         }
 
         if (modules.enabled("YawLock")) {
             float step = (float) settings.number("YawLock", "step", 45);
             float snapped = Math.round(client.player.getYaw() / step) * step;
-            client.player.setYaw(snapped);
+            setRotationIfChanged(client, snapped, client.player.getPitch());
         }
 
         if (modules.enabled("AutoDrop")) {
@@ -778,7 +817,9 @@ public final class NexoraClient implements ClientModInitializer {
 
         if (modules.enabled("QuickTurn") && quickTurnTicks >= (int) settings.number("QuickTurn", "interval", 60)) {
             quickTurnTicks = 0;
-            client.player.setYaw(client.player.getYaw() + (float) settings.number("QuickTurn", "degrees", 180));
+            setRotationIfChanged(client,
+                    client.player.getYaw() + (float) settings.number("QuickTurn", "degrees", 180),
+                    client.player.getPitch());
         }
 
         if (utilityTicks > 10000) utilityTicks = 0;
@@ -792,7 +833,9 @@ public final class NexoraClient implements ClientModInitializer {
 
         if (++antiAfkTicks >= (int) settings.number("AntiAFK", "interval", 100)) {
             antiAfkTicks = 0;
-            client.player.setYaw(client.player.getYaw() + (float) settings.number("AntiAFK", "turn", 3));
+            setRotationIfChanged(client,
+                    client.player.getYaw() + (float) settings.number("AntiAFK", "turn", 3),
+                    client.player.getPitch());
         }
     }
 
