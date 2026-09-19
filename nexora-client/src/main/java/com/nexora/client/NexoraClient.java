@@ -7,8 +7,8 @@ import com.nexora.client.feature.BaseFinder;
 import com.nexora.client.feature.BlockEspManager;
 import com.nexora.client.feature.FreecamManager;
 import com.nexora.client.feature.RelogManager;
-import com.nexora.client.feature.XRayManager;
 import com.nexora.client.feature.WaypointManager;
+import com.nexora.client.feature.XRayManager;
 import com.nexora.client.gui.NexoraScreen;
 import com.nexora.client.render.WorldEspRenderer;
 import net.fabricmc.api.ClientModInitializer;
@@ -22,8 +22,8 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
@@ -50,15 +50,22 @@ public final class NexoraClient implements ClientModInitializer {
 
     private float flySpeed = 0.10f;
     private float speedMultiplier = 1.45f;
+    private float highJumpPower = 0.72f;
+    private int zoomFov = 30;
+
     private boolean espPlayers = true;
     private boolean espMobs = true;
     private int espRange = 160;
+    private boolean entityBoxes = true;
+    private boolean entityLabels = true;
     private boolean worldLabels = true;
     private boolean worldBoxes = true;
 
     private boolean rememberedAllowFlying;
     private boolean flyStateCaptured;
     private Double rememberedGamma;
+    private Integer rememberedFov;
+    private boolean jumpWasPressed;
 
     @Override
     public void onInitializeClient() {
@@ -86,8 +93,10 @@ public final class NexoraClient implements ClientModInitializer {
         }
 
         relog.tick(client);
+
         if (client.player == null || client.world == null) {
             restoreFullbright(client);
+            restoreZoom(client);
             return;
         }
 
@@ -95,7 +104,9 @@ public final class NexoraClient implements ClientModInitializer {
         handleSprint(client);
         handleAutoWalk(client);
         handleSpeed(client);
+        handleJumpModules(client);
         handleFullbright(client);
+        handleZoom(client);
         handleEsp(client);
         freecam.tick(client);
 
@@ -106,11 +117,13 @@ public final class NexoraClient implements ClientModInitializer {
 
     private void handleFlight(MinecraftClient client) {
         PlayerAbilities abilities = client.player.getAbilities();
+
         if (modules.enabled("Fly")) {
             if (!flyStateCaptured) {
                 rememberedAllowFlying = abilities.allowFlying;
                 flyStateCaptured = true;
             }
+
             abilities.allowFlying = true;
             abilities.flying = true;
             abilities.setFlySpeed(flySpeed);
@@ -135,14 +148,16 @@ public final class NexoraClient implements ClientModInitializer {
     }
 
     private void handleSpeed(MinecraftClient client) {
-        if (!modules.enabled("Speed") || client.player.isClimbing()) return;
+        if (!modules.enabled("Speed") || client.player.isClimbing() || modules.enabled("Freecam")) return;
 
         double forward = 0.0;
         double strafe = 0.0;
+
         if (client.options.forwardKey.isPressed()) forward += 1.0;
         if (client.options.backKey.isPressed()) forward -= 1.0;
         if (client.options.leftKey.isPressed()) strafe += 1.0;
         if (client.options.rightKey.isPressed()) strafe -= 1.0;
+
         if (forward == 0.0 && strafe == 0.0) return;
 
         double length = Math.sqrt(forward * forward + strafe * strafe);
@@ -156,6 +171,22 @@ public final class NexoraClient implements ClientModInitializer {
 
         Vec3d old = client.player.getVelocity();
         client.player.setVelocity(x, old.y, z);
+    }
+
+    private void handleJumpModules(MinecraftClient client) {
+        boolean pressed = client.options.jumpKey.isPressed();
+
+        if (pressed && !jumpWasPressed && !modules.enabled("Freecam")) {
+            Vec3d velocity = client.player.getVelocity();
+
+            if (modules.enabled("HighJump") && client.player.isOnGround()) {
+                client.player.setVelocity(velocity.x, highJumpPower, velocity.z);
+            } else if (modules.enabled("AirJump") && !client.player.isOnGround()) {
+                client.player.setVelocity(velocity.x, 0.42, velocity.z);
+            }
+        }
+
+        jumpWasPressed = pressed;
     }
 
     private void handleFullbright(MinecraftClient client) {
@@ -174,6 +205,22 @@ public final class NexoraClient implements ClientModInitializer {
         }
     }
 
+    private void handleZoom(MinecraftClient client) {
+        if (modules.enabled("Zoom")) {
+            if (rememberedFov == null) rememberedFov = client.options.getFov().getValue();
+            client.options.getFov().setValue(zoomFov);
+        } else {
+            restoreZoom(client);
+        }
+    }
+
+    private void restoreZoom(MinecraftClient client) {
+        if (rememberedFov != null) {
+            client.options.getFov().setValue(rememberedFov);
+            rememberedFov = null;
+        }
+    }
+
     private void handleEsp(MinecraftClient client) {
         boolean livingEsp = modules.enabled("ESP");
         boolean crystalEsp = modules.enabled("CrystalESP");
@@ -182,12 +229,14 @@ public final class NexoraClient implements ClientModInitializer {
 
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player) continue;
+
             if (entity.squaredDistanceTo(client.player) > maxSq) {
                 if (entity.isGlowingLocal()) entity.setGlowing(false);
                 continue;
             }
 
             boolean glow = false;
+
             if (crystalEsp && entity.getType() == EntityType.END_CRYSTAL) glow = true;
             if (itemEsp && entity instanceof ItemEntity) glow = true;
 
@@ -213,9 +262,10 @@ public final class NexoraClient implements ClientModInitializer {
 
         int x = 7;
         int y = 7;
-        context.fill(3, 3, 170, 34, panel);
-        context.fill(3, 3, 170, 5, purple2);
-        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V5", x, y, purple);
+
+        context.fill(3, 3, 166, 34, panel);
+        context.fill(3, 3, 166, 5, purple2);
+        context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V6", x, y, purple);
         context.drawTextWithShadow(client.textRenderer,
                 "XYZ " + client.player.getBlockX() + " " + client.player.getBlockY() + " " + client.player.getBlockZ(),
                 x, y + 13, white);
@@ -228,18 +278,23 @@ public final class NexoraClient implements ClientModInitializer {
             if (line > 182) break;
         }
 
-        boolean showRadar = modules.enabled("BlockESP") || modules.enabled("StorageESP") || modules.enabled("BaseFinder") || modules.enabled("XRay");
+        boolean showRadar = modules.enabled("BlockESP")
+                || modules.enabled("StorageESP")
+                || modules.enabled("BaseFinder")
+                || modules.enabled("XRay");
+
         if (!showRadar) return;
 
-        int radarW = 198;
+        int radarW = 190;
         int rx = Math.max(4, context.getScaledWindowWidth() - radarW - 6);
         int ry = 6;
         int maxRows = 10;
         int radarH = 32 + maxRows * 11;
+
         context.fill(rx, ry, rx + radarW, ry + radarH, panel);
         context.fill(rx, ry, rx + radarW, ry + 2, purple2);
         context.drawTextWithShadow(client.textRenderer, "NEXORA RADAR", rx + 7, ry + 7, purple);
-        context.drawTextWithShadow(client.textRenderer, "through-wall target list", rx + 7, ry + 18, muted);
+        context.drawTextWithShadow(client.textRenderer, "loaded targets", rx + 7, ry + 18, muted);
 
         int row = 0;
         int ty = ry + 34;
@@ -247,17 +302,8 @@ public final class NexoraClient implements ClientModInitializer {
         if (modules.enabled("BaseFinder")) {
             for (BaseFinder.BaseCandidate candidate : baseFinder.candidates()) {
                 if (row++ >= maxRows) break;
-                String s = "BASE? " + (int) candidate.distance() + "m  score " + candidate.score();
+                String s = "BASE? " + (int) candidate.distance() + "m  [" + candidate.score() + "]";
                 context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFFFF72E8);
-                ty += 11;
-            }
-        }
-
-        if (modules.enabled("BlockESP") && row < maxRows) {
-            for (BlockEspManager.BlockHit hit : blockEsp.hits()) {
-                if (row++ >= maxRows) break;
-                String s = shortBlockName(hit.blockId()) + "  " + (int) hit.distance() + "m";
-                context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFF7CEAFF);
                 ty += 11;
             }
         }
@@ -265,8 +311,17 @@ public final class NexoraClient implements ClientModInitializer {
         if (modules.enabled("XRay") && row < maxRows) {
             for (XRayManager.Hit hit : xray.hits()) {
                 if (row++ >= maxRows) break;
-                String s = "XRAY " + shortBlockName(hit.blockId()) + "  " + (int) hit.distance() + "m";
+                String s = "XRAY " + shortBlockName(hit.blockId()) + " " + (int) hit.distance() + "m";
                 context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFF7CFF9D);
+                ty += 11;
+            }
+        }
+
+        if (modules.enabled("BlockESP") && row < maxRows) {
+            for (BlockEspManager.BlockHit hit : blockEsp.hits()) {
+                if (row++ >= maxRows) break;
+                String s = shortBlockName(hit.blockId()) + " " + (int) hit.distance() + "m";
+                context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFF7CEAFF);
                 ty += 11;
             }
         }
@@ -274,7 +329,7 @@ public final class NexoraClient implements ClientModInitializer {
         if (modules.enabled("StorageESP") && row < maxRows) {
             for (BaseFinder.StorageHit hit : baseFinder.hits()) {
                 if (row++ >= maxRows) break;
-                String s = hit.type() + "  " + (int) hit.distance() + "m";
+                String s = hit.type() + " " + (int) hit.distance() + "m";
                 context.drawTextWithShadow(client.textRenderer, s, rx + 7, ty, 0xFFFFD76A);
                 ty += 11;
             }
@@ -285,11 +340,13 @@ public final class NexoraClient implements ClientModInitializer {
         String s = id.contains(":") ? id.substring(id.indexOf(':') + 1) : id;
         String[] parts = s.split("_");
         StringBuilder out = new StringBuilder();
+
         for (String part : parts) {
             if (part.isEmpty()) continue;
             if (!out.isEmpty()) out.append(' ');
             out.append(part.substring(0, 1).toUpperCase(Locale.ROOT)).append(part.substring(1));
         }
+
         return out.toString();
     }
 
@@ -311,6 +368,10 @@ public final class NexoraClient implements ClientModInitializer {
             restoreFullbright(client);
         }
 
+        if (module.name().equalsIgnoreCase("Zoom") && !module.enabled()) {
+            restoreZoom(client);
+        }
+
         if (module.name().equalsIgnoreCase("Freecam")) {
             if (module.enabled()) freecam.enable(client);
             else freecam.disable(client);
@@ -328,6 +389,7 @@ public final class NexoraClient implements ClientModInitializer {
     public float flySpeed() { return flySpeed; }
     public void setFlySpeed(float value) {
         flySpeed = Math.max(0.05f, Math.min(1.0f, value));
+
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player != null && modules.enabled("Fly")) {
             client.player.getAbilities().setFlySpeed(flySpeed);
@@ -339,14 +401,32 @@ public final class NexoraClient implements ClientModInitializer {
         speedMultiplier = Math.max(1.0f, Math.min(3.0f, value));
     }
 
+    public float highJumpPower() { return highJumpPower; }
+    public void setHighJumpPower(float value) {
+        highJumpPower = Math.max(0.42f, Math.min(1.5f, value));
+    }
+
+    public int zoomFov() { return zoomFov; }
+    public void setZoomFov(int value) {
+        zoomFov = Math.max(10, Math.min(70, value));
+    }
+
     public int espRange() { return espRange; }
-    public void setEspRange(int value) { espRange = Math.max(32, Math.min(256, value)); }
+    public void setEspRange(int value) {
+        espRange = Math.max(32, Math.min(256, value));
+    }
 
     public boolean espPlayers() { return espPlayers; }
     public void setEspPlayers(boolean value) { espPlayers = value; }
 
     public boolean espMobs() { return espMobs; }
     public void setEspMobs(boolean value) { espMobs = value; }
+
+    public boolean entityBoxes() { return entityBoxes; }
+    public void setEntityBoxes(boolean value) { entityBoxes = value; }
+
+    public boolean entityLabels() { return entityLabels; }
+    public void setEntityLabels(boolean value) { entityLabels = value; }
 
     public boolean worldLabels() { return worldLabels; }
     public void setWorldLabels(boolean value) { worldLabels = value; }
