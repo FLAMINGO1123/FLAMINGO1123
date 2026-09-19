@@ -971,8 +971,76 @@ public final class NexoraClient implements ClientModInitializer {
         return out.toString();
     }
 
+    private void isolateConflicts(Module selected) {
+        if (!modules.enabled("TestIsolation") || !selected.enabled()) return;
+
+        boolean attack = settings.bool("TestIsolation", "combat", true) && isAttackTest(selected.name());
+        boolean movement = settings.bool("TestIsolation", "movement", true) && isMovementTest(selected.name());
+        boolean rotation = settings.bool("TestIsolation", "rotation", true) && isRotationTest(selected.name());
+
+        if (!attack && !movement && !rotation) return;
+
+        for (Module other : modules.all()) {
+            if (other == selected || !other.enabled()) continue;
+
+            boolean conflict = (attack && isAttackTest(other.name()))
+                    || (movement && isMovementTest(other.name()))
+                    || (rotation && isRotationTest(other.name()));
+
+            if (!conflict) continue;
+
+            other.setEnabled(false);
+            onModuleToggled(other);
+        }
+    }
+
+    private boolean isAttackTest(String name) {
+        return switch (name) {
+            case "TriggerBot", "AutoClicker", "KillAura", "Reach",
+                    "AutoSwing", "CriticalJump", "AutoShield" -> true;
+            default -> false;
+        };
+    }
+
+    private boolean isRotationTest(String name) {
+        return switch (name) {
+            case "AimAssist", "SpinBot", "PitchLock", "YawLock",
+                    "QuickTurn", "AntiAFK" -> true;
+            default -> false;
+        };
+    }
+
+    private boolean isMovementTest(String name) {
+        return switch (name) {
+            case "Fly", "Speed", "BunnyHop", "HighJump", "AirJump",
+                    "FastFall", "Glide", "Spider", "WaterSpeed", "LongJump",
+                    "Jetpack", "SlowFall", "ReverseStep", "StrafeBoost",
+                    "NoSlow", "SafeWalk", "Jesus", "Parkour", "Phase", "Step",
+                    "VehicleFly", "AntiVoid", "Velocity", "NoFall" -> true;
+            default -> false;
+        };
+    }
+
+    public void isolateForTest(Module selected) {
+        for (Module module : modules.all()) {
+            if (module == selected) continue;
+            if (module.name().equals("HUD") || module.name().equals("TestIsolation")) continue;
+            if (!module.enabled()) continue;
+
+            module.setEnabled(false);
+            onModuleToggled(module);
+        }
+
+        if (!selected.enabled()) {
+            selected.setEnabled(true);
+            onModuleToggled(selected);
+        }
+    }
+
     public void onModuleToggled(Module module) {
         MinecraftClient client = MinecraftClient.getInstance();
+
+        isolateConflicts(module);
 
         if ((module.name().equalsIgnoreCase("ESP")
                 || module.name().equalsIgnoreCase("CrystalESP")
