@@ -26,6 +26,7 @@ import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Items;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
@@ -74,7 +75,14 @@ public final class NexoraClient implements ClientModInitializer {
     private Double rememberedGamma;
     private Integer rememberedFov;
     private boolean jumpWasPressed;
+    private boolean attackWasPressed;
     private int antiAfkTicks;
+    private int autoClickTicks;
+    private int autoSwingTicks;
+    private int autoDropTicks;
+    private int handSwingTicks;
+    private int utilityTicks;
+    private int quickTurnTicks;
 
     @Override
     public void onInitializeClient() {
@@ -115,10 +123,14 @@ public final class NexoraClient implements ClientModInitializer {
         handleSpeed(client);
         handleJumpModules(client);
         handleFastFall(client);
+        handleMovementExtras(client);
         handleFullbright(client);
         handleZoom(client);
         handleEsp(client);
         handleTriggerBot(client);
+        handleCombatExtras(client);
+        handlePlayerExtras(client);
+        handleUtilityExtras(client);
         handleAntiAfk(client);
         freecam.tick(client);
 
@@ -202,7 +214,11 @@ public final class NexoraClient implements ClientModInitializer {
             if (pressed && !jumpWasPressed) {
                 Vec3d velocity = client.player.getVelocity();
 
-                if (modules.enabled("HighJump") && client.player.isOnGround()) {
+                if (modules.enabled("LongJump") && client.player.isOnGround()) {
+                    double yaw = Math.toRadians(client.player.getYaw());
+                    double boost = 0.72;
+                    client.player.setVelocity(-Math.sin(yaw) * boost, 0.42, Math.cos(yaw) * boost);
+                } else if (modules.enabled("HighJump") && client.player.isOnGround()) {
                     client.player.setVelocity(velocity.x, highJumpPower, velocity.z);
                 } else if (modules.enabled("AirJump") && !client.player.isOnGround()) {
                     client.player.setVelocity(velocity.x, 0.42, velocity.z);
@@ -220,6 +236,64 @@ public final class NexoraClient implements ClientModInitializer {
         Vec3d velocity = client.player.getVelocity();
         if (velocity.y < 0.0) {
             client.player.setVelocity(velocity.x, Math.min(velocity.y, -fastFallSpeed), velocity.z);
+        }
+    }
+
+    private void handleMovementExtras(MinecraftClient client) {
+        if (modules.enabled("Freecam")) return;
+
+        Vec3d velocity = client.player.getVelocity();
+
+        if (modules.enabled("Spider") && client.player.horizontalCollision) {
+            client.player.setVelocity(velocity.x, 0.25, velocity.z);
+            velocity = client.player.getVelocity();
+        }
+
+        if (modules.enabled("Jetpack") && client.options.jumpKey.isPressed()) {
+            client.player.setVelocity(velocity.x, 0.28, velocity.z);
+            velocity = client.player.getVelocity();
+        }
+
+        if (modules.enabled("SlowFall") && !client.player.isOnGround() && velocity.y < -0.03) {
+            client.player.setVelocity(velocity.x, -0.03, velocity.z);
+            velocity = client.player.getVelocity();
+        } else if (modules.enabled("Glide") && !client.player.isOnGround() && velocity.y < -0.08) {
+            client.player.setVelocity(velocity.x, -0.08, velocity.z);
+            velocity = client.player.getVelocity();
+        }
+
+        if (modules.enabled("ReverseStep") && !client.player.isOnGround()
+                && !client.player.isTouchingWater() && velocity.y < -0.12) {
+            client.player.setVelocity(velocity.x, Math.min(velocity.y, -0.70), velocity.z);
+            velocity = client.player.getVelocity();
+        }
+
+        if (modules.enabled("WaterSpeed") && client.player.isTouchingWater()) {
+            double horizontal = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            if (horizontal > 0.001 && horizontal < 0.62) {
+                client.player.setVelocity(velocity.x * 1.06, velocity.y, velocity.z * 1.06);
+                velocity = client.player.getVelocity();
+            }
+        }
+
+        if (modules.enabled("StrafeBoost")) {
+            double forward = 0.0;
+            double strafe = 0.0;
+            if (client.options.forwardKey.isPressed()) forward += 1.0;
+            if (client.options.backKey.isPressed()) forward -= 1.0;
+            if (client.options.leftKey.isPressed()) strafe += 1.0;
+            if (client.options.rightKey.isPressed()) strafe -= 1.0;
+
+            if (forward != 0.0 || strafe != 0.0) {
+                double length = Math.sqrt(forward * forward + strafe * strafe);
+                forward /= length;
+                strafe /= length;
+                double yaw = Math.toRadians(client.player.getYaw());
+                double boost = 0.31;
+                double x = (-Math.sin(yaw) * forward + Math.cos(yaw) * strafe) * boost;
+                double z = ( Math.cos(yaw) * forward + Math.sin(yaw) * strafe) * boost;
+                client.player.setVelocity(x, client.player.getVelocity().y, z);
+            }
         }
     }
 
@@ -256,7 +330,10 @@ public final class NexoraClient implements ClientModInitializer {
     }
 
     private void handleEsp(MinecraftClient client) {
-        boolean livingEsp = modules.enabled("ESP");
+        boolean livingEsp = modules.enabled("ESP")
+                || modules.enabled("PlayerESP")
+                || modules.enabled("MobESP")
+                || modules.enabled("GlowESP");
         boolean crystalEsp = modules.enabled("CrystalESP");
         boolean itemEsp = modules.enabled("ItemESP");
         double maxSq = (double) espRange * espRange;
@@ -275,8 +352,15 @@ public final class NexoraClient implements ClientModInitializer {
             if (itemEsp && entity instanceof ItemEntity) glow = true;
 
             if (livingEsp && entity instanceof LivingEntity) {
-                if (entity instanceof PlayerEntity) glow = espPlayers;
-                else glow = espMobs;
+                if (entity instanceof PlayerEntity) {
+                    glow = (modules.enabled("ESP") && espPlayers)
+                            || modules.enabled("PlayerESP")
+                            || (modules.enabled("GlowESP") && espPlayers);
+                } else {
+                    glow = (modules.enabled("ESP") && espMobs)
+                            || modules.enabled("MobESP")
+                            || (modules.enabled("GlowESP") && espMobs);
+                }
             }
 
             if (glow) entity.setGlowing(true);
@@ -294,6 +378,148 @@ public final class NexoraClient implements ClientModInitializer {
 
         client.interactionManager.attackEntity(client.player, target);
         client.player.swingHand(Hand.MAIN_HAND);
+    }
+
+    private void handleCombatExtras(MinecraftClient client) {
+        if (client.currentScreen != null || client.interactionManager == null) {
+            if (modules.enabled("AutoShield")) client.options.useKey.setPressed(false);
+            return;
+        }
+
+        if (modules.enabled("AimAssist")) {
+            LivingEntity nearest = null;
+            double best = 64.0;
+
+            for (Entity entity : client.world.getEntities()) {
+                if (!(entity instanceof LivingEntity living) || entity == client.player || !entity.isAlive()) continue;
+                double dist = entity.squaredDistanceTo(client.player);
+                if (dist < best) {
+                    best = dist;
+                    nearest = living;
+                }
+            }
+
+            if (nearest != null) {
+                Vec3d from = client.player.getEyePos();
+                Vec3d to = nearest.getBoundingBox().getCenter();
+                double dx = to.x - from.x;
+                double dy = to.y - from.y;
+                double dz = to.z - from.z;
+                double horizontal = Math.sqrt(dx * dx + dz * dz);
+                client.player.setYaw((float)(Math.toDegrees(Math.atan2(dz, dx)) - 90.0));
+                client.player.setPitch((float)(-Math.toDegrees(Math.atan2(dy, horizontal))));
+            }
+        }
+
+        if (modules.enabled("AutoClicker")) {
+            autoClickTicks++;
+            if (autoClickTicks >= 4 && client.crosshairTarget instanceof EntityHitResult hit) {
+                Entity target = hit.getEntity();
+                if (target != client.player && target.isAlive()
+                        && client.player.getAttackCooldownProgress(0.0f) >= 0.80f) {
+                    autoClickTicks = 0;
+                    client.interactionManager.attackEntity(client.player, target);
+                    client.player.swingHand(Hand.MAIN_HAND);
+                }
+            }
+        } else {
+            autoClickTicks = 0;
+        }
+
+        if (modules.enabled("AutoShield")) {
+            boolean threat = client.crosshairTarget instanceof EntityHitResult hit
+                    && hit.getEntity() instanceof LivingEntity
+                    && hit.getEntity().squaredDistanceTo(client.player) <= 36.0;
+            boolean hasShield = client.player.getOffHandStack().isOf(Items.SHIELD);
+            client.options.useKey.setPressed(threat && hasShield);
+        }
+
+        boolean attacking = client.options.attackKey.isPressed();
+        if (modules.enabled("CriticalJump") && attacking && !attackWasPressed && client.player.isOnGround()) {
+            Vec3d velocity = client.player.getVelocity();
+            client.player.setVelocity(velocity.x, 0.18, velocity.z);
+        }
+        attackWasPressed = attacking;
+
+        if (modules.enabled("AutoSwing")) {
+            if (++autoSwingTicks >= 8) {
+                autoSwingTicks = 0;
+                client.player.swingHand(Hand.MAIN_HAND);
+            }
+        } else {
+            autoSwingTicks = 0;
+        }
+    }
+
+    private void handlePlayerExtras(MinecraftClient client) {
+        if (modules.enabled("AutoRespawn") && client.player.isDead()) {
+            client.player.requestRespawn();
+            return;
+        }
+
+        if (modules.enabled("SpinBot")) {
+            client.player.setYaw(client.player.getYaw() + 14.0f);
+        }
+
+        if (modules.enabled("PitchLock")) {
+            client.player.setPitch(0.0f);
+        }
+
+        if (modules.enabled("YawLock")) {
+            float snapped = Math.round(client.player.getYaw() / 45.0f) * 45.0f;
+            client.player.setYaw(snapped);
+        }
+
+        if (modules.enabled("AutoDrop")) {
+            if (++autoDropTicks >= 20) {
+                autoDropTicks = 0;
+                client.player.dropSelectedItem(false);
+            }
+        } else {
+            autoDropTicks = 0;
+        }
+
+        if (modules.enabled("HandSwing")) {
+            if (++handSwingTicks >= 10) {
+                handSwingTicks = 0;
+                client.player.swingHand(Hand.MAIN_HAND);
+            }
+        } else {
+            handSwingTicks = 0;
+        }
+
+        if (modules.enabled("KeepSprint") && client.options.forwardKey.isPressed()) {
+            client.player.setSprinting(true);
+        }
+    }
+
+    private void handleUtilityExtras(MinecraftClient client) {
+        utilityTicks++;
+        quickTurnTicks++;
+
+        if (modules.enabled("SneakSpam") && !modules.enabled("AutoSneak")) {
+            client.options.sneakKey.setPressed((utilityTicks / 5) % 2 == 0);
+        }
+
+        if (modules.enabled("UseSpam") && !modules.enabled("AutoUse")) {
+            client.options.useKey.setPressed((utilityTicks / 4) % 2 == 0);
+        }
+
+        if (modules.enabled("MineSpam") && !modules.enabled("AutoMine")) {
+            client.options.attackKey.setPressed((utilityTicks / 4) % 2 == 0);
+        }
+
+        if (modules.enabled("JumpSpam") && client.player.isOnGround() && utilityTicks % 10 == 0) {
+            Vec3d velocity = client.player.getVelocity();
+            client.player.setVelocity(velocity.x, 0.42, velocity.z);
+        }
+
+        if (modules.enabled("QuickTurn") && quickTurnTicks >= 60) {
+            quickTurnTicks = 0;
+            client.player.setYaw(client.player.getYaw() + 180.0f);
+        }
+
+        if (utilityTicks > 10000) utilityTicks = 0;
     }
 
     private void handleAntiAfk(MinecraftClient client) {
@@ -329,7 +555,7 @@ public final class NexoraClient implements ClientModInitializer {
 
             context.fill(3, 3, 166, boxH, panel);
             context.fill(3, 3, 166, 5, purple2);
-            context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V8", x, y, purple);
+            context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V9", x, y, purple);
 
             if (hudCoordinates) {
                 context.drawTextWithShadow(client.textRenderer,
@@ -423,7 +649,10 @@ public final class NexoraClient implements ClientModInitializer {
 
         if ((module.name().equalsIgnoreCase("ESP")
                 || module.name().equalsIgnoreCase("CrystalESP")
-                || module.name().equalsIgnoreCase("ItemESP"))
+                || module.name().equalsIgnoreCase("ItemESP")
+                || module.name().equalsIgnoreCase("PlayerESP")
+                || module.name().equalsIgnoreCase("MobESP")
+                || module.name().equalsIgnoreCase("GlowESP"))
                 && !module.enabled() && client.world != null) {
             handleEsp(client);
         }
@@ -440,8 +669,20 @@ public final class NexoraClient implements ClientModInitializer {
             client.options.attackKey.setPressed(false);
         }
 
-        if (module.name().equalsIgnoreCase("AutoUse") && !module.enabled()) {
+        if ((module.name().equalsIgnoreCase("AutoUse")
+                || module.name().equalsIgnoreCase("UseSpam")
+                || module.name().equalsIgnoreCase("AutoShield")) && !module.enabled()) {
             client.options.useKey.setPressed(false);
+        }
+
+        if (module.name().equalsIgnoreCase("SneakSpam") && !module.enabled()
+                && !modules.enabled("AutoSneak")) {
+            client.options.sneakKey.setPressed(false);
+        }
+
+        if (module.name().equalsIgnoreCase("MineSpam") && !module.enabled()
+                && !modules.enabled("AutoMine")) {
+            client.options.attackKey.setPressed(false);
         }
 
         if (module.name().equalsIgnoreCase("Fullbright") && !module.enabled()) {
