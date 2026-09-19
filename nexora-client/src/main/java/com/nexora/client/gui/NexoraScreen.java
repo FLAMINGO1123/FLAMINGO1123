@@ -87,9 +87,6 @@ public final class NexoraScreen extends Screen {
         for (SettingsPos panel : settingsPanels()) {
             drawSettingsPanel(context, mouseX, mouseY, panel);
         }
-
-        context.drawTextWithShadow(textRenderer, "Nexora V8  •  L toggle  •  R settings  •  RShift close",
-                8, Math.max(4, height - 14), 0xC0B9B1C4);
     }
 
     private void updateAnimations() {
@@ -112,28 +109,41 @@ public final class NexoraScreen extends Screen {
     private void drawCategoryPanel(DrawContext context, int mouseX, int mouseY, PanelPos panel) {
         float anim = panelAnimations.getOrDefault("cat:" + panel.category, openAnim);
         int x = panel.x;
-        int y = panel.y + Math.round((1.0f - easeOut(anim)) * 12);
+        int y = panel.y + Math.round((1.0f - easeOut(anim)) * 8);
         int w = panel.w;
         int h = panel.h;
 
-        shadow(context, x, y, w, h);
-        glassPanel(context, x, y, w, h, PANEL);
+        meteorPanel(context, x, y, w, h);
 
         boolean collapsed = collapsedCategories.contains(panel.category);
-        context.drawTextWithShadow(textRenderer, collapsed ? "›" : "⌄", x + 7, y + 7, PURPLE_LIGHT);
-        context.drawTextWithShadow(textRenderer, panel.category, x + 18, y + 7, TEXT);
+        boolean headerHover = inside(mouseX, mouseY, x, y, w, 20);
+
+        if (headerHover) {
+            roundedRect(context, x + 2, y + 2, w - 4, 18, 4, 0x352B2440);
+        }
+
+        context.drawTextWithShadow(textRenderer, collapsed ? "›" : "⌄", x + 6, y + 6, PURPLE_LIGHT);
+        context.drawTextWithShadow(textRenderer, panel.category, x + 16, y + 6, TEXT);
 
         if (collapsed) return;
 
-        int ry = y + 24;
+        int ry = y + 22;
         for (Module module : nexora.modules().category(panel.category)) {
-            boolean hover = inside(mouseX, mouseY, x + 4, ry, w - 8, 17);
-            roundedRect(context, x + 4, ry, w - 8, 17, 5, hover ? ROW_HOVER : ROW);
+            boolean hover = inside(mouseX, mouseY, x + 3, ry, w - 6, 16);
+            boolean enabled = module.enabled();
 
-            context.drawTextWithShadow(textRenderer, module.name(), x + 8, ry + 4,
-                    module.enabled() ? TEXT : MUTED);
-            drawAnimatedToggle(context, "module:" + module.name(), x + w - 29, ry + 3, module.enabled());
-            ry += 18;
+            if (hover) {
+                roundedRect(context, x + 3, ry, w - 6, 16, 4, 0x3F332A48);
+            } else if (enabled) {
+                roundedRect(context, x + 3, ry, w - 6, 16, 4, 0x2F6A45A8);
+            }
+
+            String name = fitText(module.name(), Math.max(28, w - 25));
+            context.drawTextWithShadow(textRenderer, name, x + 7, ry + 4,
+                    enabled ? PURPLE_LIGHT : MUTED);
+
+            drawMeteorToggle(context, x + w - 16, ry + 4, enabled);
+            ry += 17;
         }
     }
 
@@ -147,8 +157,7 @@ public final class NexoraScreen extends Screen {
         int w = panel.w;
         int h = panel.h;
 
-        shadow(context, x, y, w, h);
-        glassPanel(context, x, y, w, h, PANEL_2);
+        meteorPanel(context, x, y, w, h);
 
         context.drawTextWithShadow(textRenderer, module.name(), x + 8, y + 7, TEXT);
         drawAnimatedToggle(context, "settings:" + module.name(), x + w - 43, y + 5, module.enabled());
@@ -157,8 +166,8 @@ public final class NexoraScreen extends Screen {
 
         String[] moduleTabs = tabsFor(module.name());
         int tab = tabs.getOrDefault(module.name(), 0);
-        int tx = x + 6;
-        int ty = y + 25;
+        int tx = x + 5;
+        int ty = y + 23;
 
         for (int i = 0; i < moduleTabs.length; i++) {
             int tw = textRenderer.getWidth(moduleTabs[i]) + 10;
@@ -177,7 +186,7 @@ public final class NexoraScreen extends Screen {
             tx += tw + 2;
         }
 
-        drawModuleSettings(context, mouseX, mouseY, module, tab, x + 6, y + 47, w - 12);
+        drawModuleSettings(context, mouseX, mouseY, module, tab, x + 5, y + 44, w - 10);
     }
 
     private void drawModuleSettings(DrawContext context, int mouseX, int mouseY,
@@ -366,7 +375,7 @@ public final class NexoraScreen extends Screen {
     }
 
     private boolean handleCategoryClick(double mx, double my, int button, PanelPos panel) {
-        if (inside(mx, my, panel.x, panel.y, panel.w, 22)) {
+        if (inside(mx, my, panel.x, panel.y, panel.w, 20)) {
             if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                 if (collapsedCategories.contains(panel.category)) collapsedCategories.remove(panel.category);
                 else collapsedCategories.add(panel.category);
@@ -376,9 +385,9 @@ public final class NexoraScreen extends Screen {
 
         if (collapsedCategories.contains(panel.category)) return false;
 
-        int ry = panel.y + 24;
+        int ry = panel.y + 22;
         for (Module module : nexora.modules().category(panel.category)) {
-            if (inside(mx, my, panel.x + 4, ry, panel.w - 8, 17)) {
+            if (inside(mx, my, panel.x + 3, ry, panel.w - 6, 16)) {
                 if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                     if (openSettings.contains(module.name())) openSettings.remove(module.name());
                     else {
@@ -391,7 +400,7 @@ public final class NexoraScreen extends Screen {
                 }
                 return true;
             }
-            ry += 18;
+            ry += 17;
         }
 
         return false;
@@ -414,8 +423,8 @@ public final class NexoraScreen extends Screen {
         }
 
         String[] moduleTabs = tabsFor(module.name());
-        int tx = panel.x + 6;
-        int ty = panel.y + 25;
+        int tx = panel.x + 5;
+        int ty = panel.y + 23;
 
         for (int i = 0; i < moduleTabs.length; i++) {
             int tw = textRenderer.getWidth(moduleTabs[i]) + 10;
@@ -429,7 +438,7 @@ public final class NexoraScreen extends Screen {
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) return false;
 
         return handleModuleSettingClick(mx, my, module, tabs.getOrDefault(module.name(), 0),
-                panel.x + 6, panel.y + 47, panel.w - 12);
+                panel.x + 5, panel.y + 44, panel.w - 10);
     }
 
     private boolean handleModuleSettingClick(double mx, double my, Module module, int tab,
@@ -649,26 +658,19 @@ public final class NexoraScreen extends Screen {
     private List<PanelPos> categoryPanels() {
         List<PanelPos> result = new ArrayList<>();
 
-        int w = 112;
-        int gap = 5;
+        int gap = 4;
+        int available = Math.max(300, width - 16 - gap * (CATEGORIES.length - 1));
+        int w = Math.max(76, Math.min(108, available / CATEGORIES.length));
         int x = 8;
         int y = 8;
-        int rowHeight = 0;
 
         for (String category : CATEGORIES) {
             int h = collapsedCategories.contains(category)
-                    ? 22
-                    : 24 + nexora.modules().category(category).size() * 18 + 5;
-
-            if (x + w > width - 8 && x > 8) {
-                x = 8;
-                y += rowHeight + gap;
-                rowHeight = 0;
-            }
+                    ? 20
+                    : 22 + nexora.modules().category(category).size() * 17 + 4;
 
             result.add(new PanelPos(category, x, y, w, h));
             x += w + gap;
-            rowHeight = Math.max(rowHeight, h);
         }
 
         return result;
@@ -683,8 +685,8 @@ public final class NexoraScreen extends Screen {
     private List<SettingsPos> settingsPanels() {
         List<SettingsPos> result = new ArrayList<>();
 
-        int w = 205;
-        int gap = 5;
+        int w = Math.min(185, Math.max(150, width / 3));
+        int gap = 4;
         int x = 8;
         int y = categoryGridBottom() + 6;
         int rowHeight = 0;
@@ -706,9 +708,31 @@ public final class NexoraScreen extends Screen {
         return result;
     }
 
+    private void meteorPanel(DrawContext context, int x, int y, int w, int h) {
+        int alpha = Math.max(115, Math.min(220, nexora.guiOpacity()));
+        roundedRect(context, x - 2, y - 1, w + 4, h + 4, 6, 0x22000000);
+        roundedRect(context, x, y, w, h, 5, withAlpha(0x15121C, alpha));
+        roundedRect(context, x + 1, y + 1, w - 2, 1, 1, 0x6C8B5CF6);
+    }
+
+    private void drawMeteorToggle(DrawContext context, int x, int y, boolean enabled) {
+        int outer = enabled ? 0xFF8B5CF6 : 0xFF46404F;
+        roundedRect(context, x, y, 9, 9, 4, outer);
+        if (enabled) roundedRect(context, x + 2, y + 2, 5, 5, 3, 0xFFF7F4FA);
+    }
+
+    private String fitText(String value, int maxWidth) {
+        if (textRenderer.getWidth(value) <= maxWidth) return value;
+        String suffix = "…";
+        String current = value;
+        while (!current.isEmpty() && textRenderer.getWidth(current + suffix) > maxWidth) {
+            current = current.substring(0, current.length() - 1);
+        }
+        return current + suffix;
+    }
+
     private void shadow(DrawContext context, int x, int y, int w, int h) {
-        roundedRect(context, x - 4, y - 3, w + 8, h + 8, 8, 0x1C000000);
-        roundedRect(context, x - 2, y - 1, w + 4, h + 4, 7, 0x30000000);
+        roundedRect(context, x - 2, y - 1, w + 4, h + 4, 6, 0x22000000);
     }
 
     private void glassPanel(DrawContext context, int x, int y, int w, int h, int color) {
