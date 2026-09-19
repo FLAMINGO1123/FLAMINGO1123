@@ -74,8 +74,9 @@ public final class CommandManager {
     }
 
     private void help(MinecraftClient client) {
-        chat(client, "§d§lNexora V8 §7commands");
+        chat(client, "§d§lNexora V9 §7commands");
         chat(client, "§f.gui §8| §f.modules §8| §f.panic");
+        chat(client, "§7Any module: §f.on <name> §8| §f.off <name> §8| §f.toggle <name>");
         chat(client, "§f.toggle <module> §8| §f.on <module> §8| §f.off <module>");
         chat(client, "§f.esp on/off §8| §f.xray on/off §8| §f.freecam on/off");
         chat(client, "§f.hud on/off §8| §f.radar on/off §8| §f.opacity <90-235>");
