@@ -78,8 +78,9 @@ public final class CommandManager {
     }
 
     private void help(MinecraftClient client) {
-        chat(client, "§d§lNexora V10.2 §7commands");
+        chat(client, "§d§lNexora V11 §7commands");
         chat(client, "§f.gui §8| §f.modules §8| §f.panic §8| §f.test <module>");
+        chat(client, "§7V11: TargetStrafe, AutoChase, Hitbox, AirStrafe, Hover, Anchor, AutoConsume + TestMeter");
         chat(client, "§f.settings <module> §8| §f.set <module> <setting> <value>");
         chat(client, "§7Any module: §f.on <name> §8| §f.off <name> §8| §f.toggle <name>");
         chat(client, "§f.toggle <module> §8| §f.on <module> §8| §f.off <module>");
