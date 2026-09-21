@@ -1235,7 +1235,7 @@ public final class NexoraClient implements ClientModInitializer {
     public void isolateForTest(Module selected) {
         for (Module module : modules.all()) {
             if (module == selected) continue;
-            if (module.name().equals("HUD") || module.name().equals("TestIsolation")) continue;
+            if (module.name().equals("HUD") || module.name().equals("TestIsolation") || module.name().equals("TestMeter")) continue;
             if (!module.enabled()) continue;
 
             module.setEnabled(false);
