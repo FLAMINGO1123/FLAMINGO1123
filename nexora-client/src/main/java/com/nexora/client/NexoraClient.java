@@ -22,6 +22,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ItemEntity;
@@ -137,11 +138,13 @@ public final class NexoraClient implements ClientModInitializer {
         handleJumpModules(client);
         handleFastFall(client);
         handleMovementExtras(client);
+        handleV11Movement(client);
         handleFullbright(client);
         handleZoom(client);
         handleEsp(client);
         handleTriggerBot(client);
         handleCombatExtras(client);
+        handleV11CombatMovement(client);
         handleCoreCheats(client);
         handlePlayerExtras(client);
         handleUtilityExtras(client);
@@ -166,7 +169,7 @@ public final class NexoraClient implements ClientModInitializer {
 
             abilities.allowFlying = true;
             abilities.flying = true;
-            abilities.setFlySpeed(flySpeed);
+            abilities.setFlySpeed(flySpeed());
         } else if (flyStateCaptured) {
             abilities.flying = false;
             abilities.allowFlying = rememberedAllowFlying || abilities.creativeMode;
@@ -228,7 +231,7 @@ public final class NexoraClient implements ClientModInitializer {
         strafe /= length;
 
         double yaw = Math.toRadians(client.player.getYaw());
-        double base = 0.115 * speedMultiplier;
+        double base = 0.115 * speedMultiplier();
         double x = (-Math.sin(yaw) * forward + Math.cos(yaw) * strafe) * base;
         double z = ( Math.cos(yaw) * forward + Math.sin(yaw) * strafe) * base;
 
@@ -246,7 +249,7 @@ public final class NexoraClient implements ClientModInitializer {
                     || client.options.leftKey.isPressed()
                     || client.options.rightKey.isPressed())) {
                 Vec3d velocity = client.player.getVelocity();
-                client.player.setVelocity(velocity.x, 0.42, velocity.z);
+                client.player.setVelocity(velocity.x, settings.number("BunnyHop", "jump", 0.42), velocity.z);
             }
 
             if (pressed && !jumpWasPressed) {
@@ -254,12 +257,13 @@ public final class NexoraClient implements ClientModInitializer {
 
                 if (modules.enabled("LongJump") && client.player.isOnGround()) {
                     double yaw = Math.toRadians(client.player.getYaw());
-                    double boost = 0.72;
-                    client.player.setVelocity(-Math.sin(yaw) * boost, 0.42, Math.cos(yaw) * boost);
+                    double boost = settings.number("LongJump", "boost", 0.72);
+                    double jump = settings.number("LongJump", "jump", 0.42);
+                    client.player.setVelocity(-Math.sin(yaw) * boost, jump, Math.cos(yaw) * boost);
                 } else if (modules.enabled("HighJump") && client.player.isOnGround()) {
-                    client.player.setVelocity(velocity.x, highJumpPower, velocity.z);
+                    client.player.setVelocity(velocity.x, highJumpPower(), velocity.z);
                 } else if (modules.enabled("AirJump") && !client.player.isOnGround()) {
-                    client.player.setVelocity(velocity.x, 0.42, velocity.z);
+                    client.player.setVelocity(velocity.x, settings.number("AirJump", "power", 0.42), velocity.z);
                 }
             }
         }
@@ -273,7 +277,7 @@ public final class NexoraClient implements ClientModInitializer {
 
         Vec3d velocity = client.player.getVelocity();
         if (velocity.y < 0.0) {
-            client.player.setVelocity(velocity.x, Math.min(velocity.y, -fastFallSpeed), velocity.z);
+            client.player.setVelocity(velocity.x, Math.min(velocity.y, -fastFallSpeed()), velocity.z);
         }
     }
 
@@ -283,33 +287,34 @@ public final class NexoraClient implements ClientModInitializer {
         Vec3d velocity = client.player.getVelocity();
 
         if (modules.enabled("Spider") && client.player.horizontalCollision) {
-            client.player.setVelocity(velocity.x, 0.25, velocity.z);
+            client.player.setVelocity(velocity.x, settings.number("Spider", "speed", 0.25), velocity.z);
             velocity = client.player.getVelocity();
         }
 
         if (modules.enabled("Jetpack") && client.options.jumpKey.isPressed()) {
-            client.player.setVelocity(velocity.x, 0.28, velocity.z);
+            client.player.setVelocity(velocity.x, settings.number("Jetpack", "thrust", 0.28), velocity.z);
             velocity = client.player.getVelocity();
         }
 
-        if (modules.enabled("SlowFall") && !client.player.isOnGround() && velocity.y < -0.03) {
-            client.player.setVelocity(velocity.x, -0.03, velocity.z);
+        if (modules.enabled("SlowFall") && !client.player.isOnGround() && velocity.y < -settings.number("SlowFall", "fall", 0.03)) {
+            client.player.setVelocity(velocity.x, -settings.number("SlowFall", "fall", 0.03), velocity.z);
             velocity = client.player.getVelocity();
-        } else if (modules.enabled("Glide") && !client.player.isOnGround() && velocity.y < -0.08) {
-            client.player.setVelocity(velocity.x, -0.08, velocity.z);
+        } else if (modules.enabled("Glide") && !client.player.isOnGround() && velocity.y < -settings.number("Glide", "fall", 0.08)) {
+            client.player.setVelocity(velocity.x, -settings.number("Glide", "fall", 0.08), velocity.z);
             velocity = client.player.getVelocity();
         }
 
         if (modules.enabled("ReverseStep") && !client.player.isOnGround()
                 && !client.player.isTouchingWater() && velocity.y < -0.12) {
-            client.player.setVelocity(velocity.x, Math.min(velocity.y, -0.70), velocity.z);
+            client.player.setVelocity(velocity.x, Math.min(velocity.y, -settings.number("ReverseStep", "speed", 0.70)), velocity.z);
             velocity = client.player.getVelocity();
         }
 
         if (modules.enabled("WaterSpeed") && client.player.isTouchingWater()) {
             double horizontal = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
             if (horizontal > 0.001 && horizontal < 0.62) {
-                client.player.setVelocity(velocity.x * 1.06, velocity.y, velocity.z * 1.06);
+                double mult = settings.number("WaterSpeed", "multiplier", 1.06);
+                client.player.setVelocity(velocity.x * mult, velocity.y, velocity.z * mult);
                 velocity = client.player.getVelocity();
             }
         }
@@ -318,16 +323,17 @@ public final class NexoraClient implements ClientModInitializer {
             Vec3d current = client.player.getVelocity();
             double h = Math.sqrt(current.x * current.x + current.z * current.z);
             if (h > 0.001 && h < 0.32) {
-                client.player.setVelocity(current.x * 1.35, current.y, current.z * 1.35);
+                double mult = settings.number("NoSlow", "multiplier", 1.35);
+                client.player.setVelocity(current.x * mult, current.y, current.z * mult);
             }
         }
 
         if (modules.enabled("SafeWalk") && client.player.isOnGround()) {
             Vec3d current = client.player.getVelocity();
             BlockPos ahead = BlockPos.ofFloored(
-                    client.player.getX() + current.x * 2.2,
+                    client.player.getX() + current.x * settings.number("SafeWalk", "probe", 2.2),
                     client.player.getY() - 0.6,
-                    client.player.getZ() + current.z * 2.2
+                    client.player.getZ() + current.z * settings.number("SafeWalk", "probe", 2.2)
             );
             if (client.world.getBlockState(ahead).isAir()) {
                 client.player.setVelocity(0.0, current.y, 0.0);
@@ -336,13 +342,16 @@ public final class NexoraClient implements ClientModInitializer {
 
         if (modules.enabled("Jesus") && client.player.isTouchingWater()) {
             Vec3d current = client.player.getVelocity();
-            client.player.setVelocity(current.x * 1.08, Math.max(0.08, current.y), current.z * 1.08);
+            double waterBoost = settings.number("Jesus", "speed", 1.08);
+            double lift = settings.number("Jesus", "lift", 0.08);
+            client.player.setVelocity(current.x * waterBoost, Math.max(lift, current.y), current.z * waterBoost);
         }
 
         if (modules.enabled("Parkour") && client.player.isOnGround() && client.options.forwardKey.isPressed()) {
             double yaw = Math.toRadians(client.player.getYaw());
-            double aheadX = client.player.getX() - Math.sin(yaw) * 0.8;
-            double aheadZ = client.player.getZ() + Math.cos(yaw) * 0.8;
+            double lookAhead = settings.number("Parkour", "lookahead", 0.8);
+            double aheadX = client.player.getX() - Math.sin(yaw) * lookAhead;
+            double aheadZ = client.player.getZ() + Math.cos(yaw) * lookAhead;
             BlockPos belowAhead = BlockPos.ofFloored(aheadX, client.player.getY() - 0.6, aheadZ);
             if (client.world.getBlockState(belowAhead).isAir()) {
                 client.player.jump();
@@ -351,7 +360,7 @@ public final class NexoraClient implements ClientModInitializer {
 
         if (modules.enabled("Step") && client.player.isOnGround() && client.player.horizontalCollision) {
             Vec3d current = client.player.getVelocity();
-            client.player.setVelocity(current.x, 0.46, current.z);
+            client.player.setVelocity(current.x, settings.number("Step", "height", 0.46), current.z);
         }
 
         client.player.noClip = modules.enabled("Phase");
@@ -359,18 +368,19 @@ public final class NexoraClient implements ClientModInitializer {
         if (modules.enabled("VehicleFly") && client.player.getVehicle() != null) {
             Entity vehicle = client.player.getVehicle();
             double yaw = Math.toRadians(client.player.getYaw());
-            double speed = 0.55;
+            double speed = settings.number("VehicleFly", "horizontal", 0.55);
             double x = -Math.sin(yaw) * speed;
             double z = Math.cos(yaw) * speed;
-            double y = client.options.jumpKey.isPressed() ? 0.35
-                    : client.options.sneakKey.isPressed() ? -0.35 : 0.0;
+            double vertical = settings.number("VehicleFly", "vertical", 0.35);
+            double y = client.options.jumpKey.isPressed() ? vertical
+                    : client.options.sneakKey.isPressed() ? -vertical : 0.0;
             vehicle.setVelocity(x, y, z);
         }
 
         if (modules.enabled("AntiVoid")
-                && client.player.getY() <= client.world.getBottomY() + 5) {
+                && client.player.getY() <= client.world.getBottomY() + settings.number("AntiVoid", "threshold", 5)) {
             Vec3d current = client.player.getVelocity();
-            client.player.setVelocity(current.x * 0.2, 1.0, current.z * 0.2);
+            client.player.setVelocity(current.x * 0.2, settings.number("AntiVoid", "boost", 1.0), current.z * 0.2);
         }
 
         if (modules.enabled("StrafeBoost")) {
@@ -386,7 +396,7 @@ public final class NexoraClient implements ClientModInitializer {
                 forward /= length;
                 strafe /= length;
                 double yaw = Math.toRadians(client.player.getYaw());
-                double boost = 0.31;
+                double boost = settings.number("StrafeBoost", "speed", 0.31);
                 double x = (-Math.sin(yaw) * forward + Math.cos(yaw) * strafe) * boost;
                 double z = ( Math.cos(yaw) * forward + Math.sin(yaw) * strafe) * boost;
                 client.player.setVelocity(x, client.player.getVelocity().y, z);
@@ -394,10 +404,105 @@ public final class NexoraClient implements ClientModInitializer {
         }
     }
 
+    private void handleV11Movement(MinecraftClient client) {
+        if (modules.enabled("Freecam")) return;
+
+        Vec3d velocity = client.player.getVelocity();
+
+        if (modules.enabled("AirStrafe") && !client.player.isOnGround()) {
+            double forward = 0.0;
+            double strafe = 0.0;
+            if (client.options.forwardKey.isPressed()) forward += 1.0;
+            if (client.options.backKey.isPressed()) forward -= 1.0;
+            if (client.options.leftKey.isPressed()) strafe += 1.0;
+            if (client.options.rightKey.isPressed()) strafe -= 1.0;
+
+            if (forward != 0.0 || strafe != 0.0) {
+                double len = Math.sqrt(forward * forward + strafe * strafe);
+                forward /= len;
+                strafe /= len;
+                double yaw = Math.toRadians(client.player.getYaw());
+                double speed = settings.number("AirStrafe", "speed", 0.28);
+                double x = (-Math.sin(yaw) * forward + Math.cos(yaw) * strafe) * speed;
+                double z = ( Math.cos(yaw) * forward + Math.sin(yaw) * strafe) * speed;
+                client.player.setVelocity(x, client.player.getVelocity().y, z);
+            }
+        }
+
+        if (modules.enabled("SneakSpeed") && client.player.isSneaking()) {
+            Vec3d current = client.player.getVelocity();
+            double mult = settings.number("SneakSpeed", "multiplier", 1.35);
+            client.player.setVelocity(current.x * mult, current.y, current.z * mult);
+        }
+
+        if (modules.enabled("IceSpeed")) {
+            BlockPos below = client.player.getBlockPos().down();
+            BlockState state = client.world.getBlockState(below);
+            if (state.isOf(Blocks.ICE) || state.isOf(Blocks.PACKED_ICE)
+                    || state.isOf(Blocks.BLUE_ICE) || state.isOf(Blocks.FROSTED_ICE)) {
+                Vec3d current = client.player.getVelocity();
+                double mult = settings.number("IceSpeed", "multiplier", 1.40);
+                client.player.setVelocity(current.x * mult, current.y, current.z * mult);
+            }
+        }
+
+        if (modules.enabled("LavaSpeed") && client.player.isInLava()) {
+            Vec3d current = client.player.getVelocity();
+            double mult = settings.number("LavaSpeed", "multiplier", 1.20);
+            client.player.setVelocity(current.x * mult, current.y, current.z * mult);
+        }
+
+        if (modules.enabled("AutoSwim") && client.player.isTouchingWater()
+                && (client.options.forwardKey.isPressed() || client.options.jumpKey.isPressed())) {
+            Vec3d current = client.player.getVelocity();
+            client.player.setVelocity(current.x,
+                    Math.max(current.y, settings.number("AutoSwim", "lift", 0.12)),
+                    current.z);
+        }
+
+        if (modules.enabled("Hover") && !client.player.isOnGround()) {
+            Vec3d current = client.player.getVelocity();
+            client.player.setVelocity(current.x,
+                    settings.number("Hover", "vertical", 0.0),
+                    current.z);
+        }
+
+        if (modules.enabled("Anchor")) {
+            Vec3d current = client.player.getVelocity();
+            double x = settings.bool("Anchor", "horizontal", true) ? 0.0 : current.x;
+            double y = settings.bool("Anchor", "vertical", true) ? 0.0 : current.y;
+            double z = settings.bool("Anchor", "horizontal", true) ? 0.0 : current.z;
+            client.player.setVelocity(x, y, z);
+        }
+
+        if (modules.enabled("EdgeJump") && client.player.isOnGround()) {
+            double yaw = Math.toRadians(client.player.getYaw());
+            double lookAhead = settings.number("EdgeJump", "lookahead", 0.85);
+            BlockPos belowAhead = BlockPos.ofFloored(
+                    client.player.getX() - Math.sin(yaw) * lookAhead,
+                    client.player.getY() - 0.6,
+                    client.player.getZ() + Math.cos(yaw) * lookAhead
+            );
+            if (client.world.getBlockState(belowAhead).isAir()) {
+                Vec3d current = client.player.getVelocity();
+                client.player.setVelocity(current.x,
+                        settings.number("EdgeJump", "power", 0.42),
+                        current.z);
+            }
+        }
+
+        if (modules.enabled("WallBounce") && client.player.horizontalCollision) {
+            Vec3d current = client.player.getVelocity();
+            double h = settings.number("WallBounce", "horizontal", 0.35);
+            double y = settings.number("WallBounce", "vertical", 0.32);
+            client.player.setVelocity(-Math.signum(current.x) * h, y, -Math.signum(current.z) * h);
+        }
+    }
+
     private void handleFullbright(MinecraftClient client) {
         if (modules.enabled("Fullbright")) {
             if (rememberedGamma == null) rememberedGamma = client.options.getGamma().getValue();
-            client.options.getGamma().setValue(1.0);
+            client.options.getGamma().setValue(settings.number("Fullbright", "gamma", 1.0));
         } else {
             restoreFullbright(client);
         }
@@ -413,7 +518,7 @@ public final class NexoraClient implements ClientModInitializer {
     private void handleZoom(MinecraftClient client) {
         if (modules.enabled("Zoom")) {
             if (rememberedFov == null) rememberedFov = client.options.getFov().getValue();
-            client.options.getFov().setValue(zoomFov);
+            client.options.getFov().setValue(zoomFov());
         } else {
             restoreZoom(client);
         }
@@ -433,7 +538,7 @@ public final class NexoraClient implements ClientModInitializer {
                 || modules.enabled("GlowESP");
         boolean crystalEsp = modules.enabled("CrystalESP");
         boolean itemEsp = modules.enabled("ItemESP");
-        double maxSq = (double) espRange * espRange;
+        double maxSq = (double) espRange() * espRange();
 
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player) continue;
@@ -560,6 +665,52 @@ public final class NexoraClient implements ClientModInitializer {
         }
     }
 
+    private void handleV11CombatMovement(MinecraftClient client) {
+        if (modules.enabled("Freecam")) return;
+
+        if (modules.enabled("TargetStrafe")) {
+            LivingEntity target = nearestLivingTarget(client,
+                    settings.number("TargetStrafe", "range", 6.0),
+                    settings.bool("TargetStrafe", "players", true),
+                    settings.bool("TargetStrafe", "mobs", true));
+
+            if (target != null) {
+                double dx = client.player.getX() - target.getX();
+                double dz = client.player.getZ() - target.getZ();
+                double dist = Math.max(0.001, Math.sqrt(dx * dx + dz * dz));
+                double desired = settings.number("TargetStrafe", "radius", 3.0);
+                double tangentX = -dz / dist;
+                double tangentZ = dx / dist;
+                double radial = (desired - dist) * 0.08;
+                double speed = settings.number("TargetStrafe", "speed", 0.28);
+                Vec3d current = client.player.getVelocity();
+                client.player.setVelocity(
+                        tangentX * speed + (dx / dist) * radial,
+                        current.y,
+                        tangentZ * speed + (dz / dist) * radial
+                );
+            }
+        }
+
+        if (modules.enabled("AutoChase")) {
+            LivingEntity target = nearestLivingTarget(client,
+                    settings.number("AutoChase", "range", 10.0),
+                    settings.bool("AutoChase", "players", true),
+                    settings.bool("AutoChase", "mobs", true));
+
+            if (target != null) {
+                double dx = target.getX() - client.player.getX();
+                double dz = target.getZ() - client.player.getZ();
+                double len = Math.sqrt(dx * dx + dz * dz);
+                if (len > 0.25) {
+                    double speed = settings.number("AutoChase", "speed", 0.24);
+                    Vec3d current = client.player.getVelocity();
+                    client.player.setVelocity(dx / len * speed, current.y, dz / len * speed);
+                }
+            }
+        }
+    }
+
     private void handleCoreCheats(MinecraftClient client) {
         if (client.currentScreen == null && client.interactionManager != null) {
             if (modules.enabled("KillAura") && client.player.getAttackCooldownProgress(0.0f)
@@ -580,12 +731,22 @@ public final class NexoraClient implements ClientModInitializer {
             if (modules.enabled("Reach") && attackPressed && !reachWasPressed
                     && client.player.getAttackCooldownProgress(0.0f) >= settings.number("Reach", "cooldown", 0.80)) {
                 LivingEntity target = targetAlongLook(client,
-                        settings.number("Reach", "range", 6.0),
+                        settings.number("Reach", "range", 3.0),
                         settings.number("Reach", "radius", 1.35));
                 if (target != null) {
                     tryAttack(client, target,
                             settings.number("Reach", "cooldown", 0.80),
                             settings.number("Reach", "range", 3.0));
+                }
+            } else if (modules.enabled("Hitbox") && attackPressed && !reachWasPressed
+                    && client.player.getAttackCooldownProgress(0.0f) >= settings.number("Hitbox", "cooldown", 0.85)) {
+                LivingEntity target = targetAlongLook(client,
+                        settings.number("Hitbox", "range", 4.5),
+                        settings.number("Hitbox", "radius", 1.80));
+                if (target != null) {
+                    tryAttack(client, target,
+                            settings.number("Hitbox", "cooldown", 0.85),
+                            settings.number("Hitbox", "range", 4.5));
                 }
             }
 
@@ -600,6 +761,15 @@ public final class NexoraClient implements ClientModInitializer {
                 Vec3d velocity = client.player.getVelocity();
                 double horizontal = settings.number("Velocity", "horizontal", 25) / 100.0;
                 double vertical = settings.number("Velocity", "vertical", 35) / 100.0;
+                client.player.setVelocity(velocity.x * horizontal, velocity.y * vertical, velocity.z * horizontal);
+            }
+            lastHurtTime = hurt;
+        } else if (modules.enabled("KnockbackBoost")) {
+            int hurt = client.player.hurtTime;
+            if (hurt > lastHurtTime) {
+                Vec3d velocity = client.player.getVelocity();
+                double horizontal = settings.number("KnockbackBoost", "horizontal", 150) / 100.0;
+                double vertical = settings.number("KnockbackBoost", "vertical", 125) / 100.0;
                 client.player.setVelocity(velocity.x * horizontal, velocity.y * vertical, velocity.z * horizontal);
             }
             lastHurtTime = hurt;
@@ -736,6 +906,13 @@ public final class NexoraClient implements ClientModInitializer {
     }
 
     private void handlePlayerExtras(MinecraftClient client) {
+        if (modules.enabled("AutoConsume")) {
+            int threshold = (int) settings.number("AutoConsume", "hunger", 14);
+            int interval = Math.max(1, (int) settings.number("AutoConsume", "interval", 1));
+            boolean hungry = client.player.getHungerManager().getFoodLevel() <= threshold;
+            client.options.useKey.setPressed(hungry && utilityTicks % interval == 0);
+        }
+
         if (modules.enabled("AutoRespawn") && client.player.isDead()) {
             respawnTicks++;
             if (respawnTicks >= (int) settings.number("AutoRespawn", "delay", 0)) {
@@ -860,7 +1037,7 @@ public final class NexoraClient implements ClientModInitializer {
 
             context.fill(3, 3, 166, boxH, panel);
             context.fill(3, 3, 166, 5, purple2);
-            context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V10", x, y, purple);
+            context.drawTextWithShadow(client.textRenderer, "✦ NEXORA V11", x, y, purple);
 
             if (hudCoordinates) {
                 context.drawTextWithShadow(client.textRenderer,
@@ -880,6 +1057,37 @@ public final class NexoraClient implements ClientModInitializer {
                     line += 11;
                     if (line > 182) break;
                 }
+            }
+        }
+
+        if (modules.enabled("TestMeter")) {
+            int mx = 7;
+            int my = Math.max(205, context.getScaledWindowHeight() - 66);
+            Vec3d v = client.player.getVelocity();
+            context.fill(mx - 4, my - 4, mx + 184, my + 58, panel);
+            context.drawTextWithShadow(client.textRenderer, "TEST METER", mx, my, purple);
+
+            int line = my + 12;
+            if (settings.bool("TestMeter", "velocity", true)) {
+                String speed = String.format(Locale.ROOT, "V %.3f %.3f %.3f", v.x, v.y, v.z);
+                context.drawTextWithShadow(client.textRenderer, speed, mx, line, white);
+                line += 10;
+            }
+            if (settings.bool("TestMeter", "cooldown", true)) {
+                String cd = String.format(Locale.ROOT, "CD %.2f", client.player.getAttackCooldownProgress(0.0f));
+                context.drawTextWithShadow(client.textRenderer, cd, mx, line, white);
+                line += 10;
+            }
+            if (settings.bool("TestMeter", "fall", true)) {
+                String fall = String.format(Locale.ROOT, "Fall %.2f", client.player.fallDistance);
+                context.drawTextWithShadow(client.textRenderer, fall, mx, line, white);
+                line += 10;
+            }
+            if (settings.bool("TestMeter", "target", true)) {
+                LivingEntity target = nearestLivingTarget(client, 20.0, true, true);
+                String targetText = target == null ? "Target --"
+                        : String.format(Locale.ROOT, "Target %.2fm", Math.sqrt(target.squaredDistanceTo(client.player)));
+                context.drawTextWithShadow(client.textRenderer, targetText, mx, line, white);
             }
         }
 
@@ -996,7 +1204,7 @@ public final class NexoraClient implements ClientModInitializer {
 
     private boolean isAttackTest(String name) {
         return switch (name) {
-            case "TriggerBot", "AutoClicker", "KillAura", "Reach",
+            case "TriggerBot", "AutoClicker", "KillAura", "Reach", "Hitbox",
                     "AutoSwing", "CriticalJump", "AutoShield" -> true;
             default -> false;
         };
@@ -1016,7 +1224,10 @@ public final class NexoraClient implements ClientModInitializer {
                     "FastFall", "Glide", "Spider", "WaterSpeed", "LongJump",
                     "Jetpack", "SlowFall", "ReverseStep", "StrafeBoost",
                     "NoSlow", "SafeWalk", "Jesus", "Parkour", "Phase", "Step",
-                    "VehicleFly", "AntiVoid", "Velocity", "NoFall" -> true;
+                    "VehicleFly", "AntiVoid", "Velocity", "NoFall",
+                    "TargetStrafe", "AutoChase", "KnockbackBoost",
+                    "AirStrafe", "SneakSpeed", "IceSpeed", "LavaSpeed",
+                    "AutoSwim", "Hover", "Anchor", "EdgeJump", "WallBounce" -> true;
             default -> false;
         };
     }
@@ -1066,7 +1277,8 @@ public final class NexoraClient implements ClientModInitializer {
 
         if ((module.name().equalsIgnoreCase("AutoUse")
                 || module.name().equalsIgnoreCase("UseSpam")
-                || module.name().equalsIgnoreCase("AutoShield")) && !module.enabled()) {
+                || module.name().equalsIgnoreCase("AutoShield")
+                || module.name().equalsIgnoreCase("AutoConsume")) && !module.enabled()) {
             client.options.useKey.setPressed(false);
         }
 
