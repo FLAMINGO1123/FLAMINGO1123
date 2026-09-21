@@ -20,6 +20,10 @@ public final class ModuleManager {
         add(new Module("KillAura", "Combat", "Attacks the nearest living target in melee range.", false));
         add(new Module("Reach", "Combat", "Attempts attacks on targets farther along your crosshair.", false));
         add(new Module("Velocity", "Combat", "Reduces local knockback after taking damage.", false));
+        add(new Module("TargetStrafe", "Combat", "Moves in an orbit around the nearest living target.", false));
+        add(new Module("AutoChase", "Combat", "Moves toward the nearest living target in range.", false));
+        add(new Module("Hitbox", "Combat", "Uses an adjustable target radius when attacking along your crosshair.", false));
+        add(new Module("KnockbackBoost", "Combat", "Amplifies your local velocity after taking damage.", false));
 
         add(new Module("Fly", "Movement", "Client flight with adjustable speed.", false));
         add(new Module("Sprint", "Movement", "Automatically sprints while moving forward.", false));
@@ -47,6 +51,15 @@ public final class ModuleManager {
         add(new Module("Step", "Movement", "Steps upward when colliding horizontally.", false));
         add(new Module("VehicleFly", "Movement", "Lets you steer and lift your current vehicle.", false));
         add(new Module("AntiVoid", "Movement", "Pushes you upward near the bottom of the world.", false));
+        add(new Module("AirStrafe", "Movement", "Applies configurable horizontal control while airborne.", false));
+        add(new Module("SneakSpeed", "Movement", "Boosts horizontal movement while sneaking.", false));
+        add(new Module("IceSpeed", "Movement", "Boosts movement while standing on ice blocks.", false));
+        add(new Module("LavaSpeed", "Movement", "Boosts movement while inside lava.", false));
+        add(new Module("AutoSwim", "Movement", "Applies upward swim movement while moving in water.", false));
+        add(new Module("Hover", "Movement", "Holds your vertical velocity near zero while airborne.", false));
+        add(new Module("Anchor", "Movement", "Locks your player velocity in place.", false));
+        add(new Module("EdgeJump", "Movement", "Automatically jumps when approaching an unsupported edge.", false));
+        add(new Module("WallBounce", "Movement", "Bounces away from horizontal collisions.", false));
 
         add(new Module("AutoRespawn", "Player", "Automatically respawns after death.", false));
         add(new Module("SpinBot", "Player", "Continuously rotates your view.", false));
@@ -60,6 +73,7 @@ public final class ModuleManager {
         add(new Module("FastBreak", "Player", "Sends block-break progress every tick on the targeted block.", false));
         add(new Module("Nuker", "Player", "Attempts to break nearby blocks automatically.", false));
         add(new Module("AutoTool", "Player", "Selects the fastest hotbar tool for the targeted block.", false));
+        add(new Module("AutoConsume", "Player", "Holds use when hunger drops below a configured level.", false));
 
         add(new Module("ESP", "Render", "Entity boxes, labels and glow through terrain.", false));
         add(new Module("ItemESP", "Render", "Highlights dropped items.", false));
@@ -82,6 +96,7 @@ public final class ModuleManager {
         add(new Module("AutoUse", "Misc", "Keeps the use-item key held.", false));
         add(new Module("AntiAFK", "Misc", "Adds small periodic camera movement while idle.", false));
         add(new Module("TestIsolation", "Misc", "Keeps conflicting test modules isolated so anti-cheat results are easier to attribute.", true));
+        add(new Module("TestMeter", "Misc", "Shows deterministic movement/combat telemetry for server testing.", true));
 
         add(new Module("SneakSpam", "Utility", "Rapidly toggles sneak.", false));
         add(new Module("JumpSpam", "Utility", "Automatically jumps at intervals while grounded.", false));
