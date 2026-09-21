@@ -194,6 +194,20 @@ public final class ModuleSettings {
         number("Reach","cooldown","Cooldown",0.80,0.10,1.0,0.05);
         number("Velocity","horizontal","Horizontal %",25,0,100,5);
         number("Velocity","vertical","Vertical %",35,0,100,5);
+        number("TargetStrafe","range","Target Range",6.0,2.0,12.0,0.5);
+        number("TargetStrafe","speed","Orbit Speed",0.28,0.05,0.80,0.05);
+        number("TargetStrafe","radius","Orbit Radius",3.0,1.0,6.0,0.25);
+        bool("TargetStrafe","players","Players",true);
+        bool("TargetStrafe","mobs","Mobs",true);
+        number("AutoChase","range","Target Range",10.0,2.0,20.0,0.5);
+        number("AutoChase","speed","Chase Speed",0.24,0.05,0.80,0.05);
+        bool("AutoChase","players","Players",true);
+        bool("AutoChase","mobs","Mobs",true);
+        number("Hitbox","range","Range",4.5,2.0,6.0,0.25);
+        number("Hitbox","radius","Target Radius",1.80,0.25,3.0,0.10);
+        number("Hitbox","cooldown","Cooldown",0.85,0.10,1.0,0.05);
+        number("KnockbackBoost","horizontal","Horizontal %",150,100,300,10);
+        number("KnockbackBoost","vertical","Vertical %",125,100,300,10);
 
         number("Fly","speed","Fly Speed",0.10,0.05,1.0,0.05);
         bool("Sprint","forwardOnly","Forward Only",true);
@@ -225,6 +239,18 @@ public final class ModuleSettings {
         number("VehicleFly","vertical","Vertical",0.35,0.10,1.0,0.05);
         number("AntiVoid","threshold","Bottom Offset",5,1,20,1);
         number("AntiVoid","boost","Recovery Boost",1.0,0.2,2.0,0.10);
+        number("AirStrafe","speed","Air Speed",0.28,0.05,0.80,0.05);
+        number("SneakSpeed","multiplier","Multiplier",1.35,1.0,2.5,0.05);
+        number("IceSpeed","multiplier","Multiplier",1.40,1.0,3.0,0.10);
+        number("LavaSpeed","multiplier","Multiplier",1.20,1.0,2.5,0.05);
+        number("AutoSwim","lift","Upward Lift",0.12,0.02,0.50,0.02);
+        number("Hover","vertical","Vertical Speed",0.0,-0.20,0.20,0.02);
+        bool("Anchor","horizontal","Lock Horizontal",true);
+        bool("Anchor","vertical","Lock Vertical",true);
+        number("EdgeJump","lookahead","Look Ahead",0.85,0.3,2.0,0.05);
+        number("EdgeJump","power","Jump Power",0.42,0.20,0.80,0.02);
+        number("WallBounce","horizontal","Horizontal Bounce",0.35,0.10,1.0,0.05);
+        number("WallBounce","vertical","Vertical Bounce",0.32,0.05,0.80,0.05);
 
         number("AutoRespawn","delay","Delay Ticks",0,0,40,1);
         number("SpinBot","speed","Yaw / Tick",14,1,60,1);
@@ -240,6 +266,8 @@ public final class ModuleSettings {
         number("Nuker","radius","Radius",2,1,5,1);
         number("Nuker","delay","Delay Ticks",1,1,20,1);
         choice("AutoTool","mode","Mode","Fastest","Fastest","Prefer Sword","Prefer Pickaxe");
+        number("AutoConsume","hunger","Hunger Threshold",14,1,19,1);
+        number("AutoConsume","interval","Use Interval",1,1,10,1);
 
         number("ESP","range","Range",160,32,256,16);
         bool("ESP","players","Players",true);
@@ -272,6 +300,10 @@ public final class ModuleSettings {
         bool("TestIsolation","combat","Isolate Attack Modules",true);
         bool("TestIsolation","movement","Isolate Movement Modules",true);
         bool("TestIsolation","rotation","Isolate Rotation Modules",true);
+        bool("TestMeter","velocity","Velocity",true);
+        bool("TestMeter","cooldown","Attack Cooldown",true);
+        bool("TestMeter","fall","Fall Distance",true);
+        bool("TestMeter","target","Target Distance",true);
 
         number("SneakSpam","interval","Interval Ticks",5,1,20,1);
         number("JumpSpam","interval","Interval Ticks",10,1,40,1);
